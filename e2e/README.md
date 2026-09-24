@@ -52,9 +52,11 @@ CAP-71-01 needs two simulation passes, and the tests follow that:
 
 1. **Simulate in record mode.** The host reports which addresses must authorize
    the call, and hands back unsigned authorization entries.
-2. **Sign with soroauth.** For A, B and C this is `AuthorizeAll`. For D and E the
-   recorded entry is first wrapped with `WithDelegates`, then each delegate is
-   signed with `AuthorizeEntry` and `ForAddress`.
+2. **Sign with soroauth.** The unified `runScenario` passes every prepared entry
+   to `AuthorizeAll`, which targets matching nodes with `ForAddress`. A–C sign
+   their recorded entries directly; for D and E, `prepareDelegates` first wraps
+   the contract account's entry with `WithDelegates` and declares the delegate
+   nodes, then the same runner signs the supplied delegate signers.
 3. **Simulate in enforce mode**, carrying the signed entries, so the resource
    fee accounts for the signatures that are actually there.
 4. **Assemble** — the Go SDK has no `assembleTransaction`, so the simulated
@@ -82,9 +84,11 @@ The tests are split by role rather than kept in one file:
 |------|-------|
 | `harness_test.go` | Connecting to and verifying the RPC, funding accounts, building, simulating, assembling, submitting and polling; decoding the submitted envelope's credential arm; rendering host failures and extracting their error details. |
 | `transfer_test.go` | The native-SAC `transfer(from, to, amount)` operation builder and small `ScVal`/`ScAddress` helpers. |
-| `scenario_ab_test.go` | Scenarios A and B, plus the two shared runners: `runTransfer` (record, sign, enforce, assemble, submit) and `runTransferExpectingFailure` for runs meant to be rejected. |
+| `runner_test.go` | The single scenario runner and its parameter table: the record/sign/enforce/assemble/submit shape shared by every scenario, plus decoded-entry and signed-entry diagnostics. |
+| `runner_regression_test.go` | The deterministic regression fixture for rejection-path resource headroom. |
+| `scenario_ab_test.go` | Scenarios A and B, including the V2 route decision. |
 | `scenario_c_test.go` | Scenario C, the multisig account setup, and the single-signature control. |
-| `scenario_de_test.go` | Scenarios D and E and the delegates flow that wraps, signs per address, and submits. |
+| `scenario_de_test.go` | Scenarios D and E and their entry-preparation hook for wrapping and signing delegates. |
 | `deploy_test.go` | Uploading the fixture wasm, instantiating it with a constructor argument, and funding a contract with XLM. |
 | `results_test.go` | `TestMain` and the writer that produces `RESULTS.md` from a complete run. |
 
@@ -103,9 +107,9 @@ and both rejection paths.
 
 ## RESULTS.md
 
-`RESULTS.md` is written by a run, never by hand. It is only written when all five
-scenarios ran in the same invocation, so it cannot be a partial record of a
-single-scenario run. It carries the date, the network and protocol version, and
-for every scenario the transaction hash, the ledger, the credential arm observed
-on the submitted envelope, an explorer link, and — for scenario E — the raw host
-error verbatim.
+`RESULTS.md` is written by a run, never by hand. It is only written when all six
+scenarios (A, B, C, C-control, D, E) ran in the same invocation, so it cannot be a
+partial record of a single-scenario run. It carries the date, the network and
+protocol version, and for every scenario the transaction hash, the ledger, the
+credential arm observed on the submitted envelope, an explorer link, and — for
+scenario E — the raw host error verbatim.

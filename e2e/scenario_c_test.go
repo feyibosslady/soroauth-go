@@ -72,7 +72,12 @@ func TestScenarioC(t *testing.T) {
 		t.Fatalf("building the multi signer: %v", err)
 	}
 
-	result := runTransfer(t, h, payer, op, []soroauth.Signer{signer}, true, nil)
+	result := runScenario(t, h, scenarioSpec{
+		payer:        payer,
+		op:           op,
+		signers:      []soroauth.Signer{signer},
+		upgradedAuth: true,
+	})
 
 	t.Logf("tx hash: %s", result.Hash)
 	t.Logf("ledger:  %d", result.Ledger)
@@ -122,7 +127,13 @@ func TestScenarioCRejectsASingleSignature(t *testing.T) {
 		t.Fatalf("building the single-key multi signer: %v", err)
 	}
 
-	result := runTransferExpectingFailure(t, h, payer, op, []soroauth.Signer{signer})
+	result := runScenario(t, h, scenarioSpec{
+		payer:         payer,
+		op:            op,
+		signers:       []soroauth.Signer{signer},
+		upgradedAuth:  true,
+		expectFailure: true,
+	})
 
 	t.Logf("tx hash:   %s", result.Hash)
 	t.Logf("status:    %s", result.Status)

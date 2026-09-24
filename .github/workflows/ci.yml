@@ -31,6 +31,25 @@ jobs:
       - name: test
         run: go test ./...
 
+  e2e:
+    name: testnet end-to-end scenarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - uses: stellar/stellar-cli@v28.0.0
+      - name: build the e2e fixture contract
+        working-directory: e2e/contracts
+        run: stellar contract build
+      - name: run every scenario against testnet
+        run: go test -tags e2e -v -count=1 ./e2e/...
+        env:
+          SOROAUTH_RPC_URL: https://soroban-testnet.stellar.org
+
   cross-compile:
     name: cross-compile release targets
     runs-on: ubuntu-latest

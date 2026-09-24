@@ -3,12 +3,9 @@
 package e2e
 
 import (
-	"context"
 	"testing"
 
-	"github.com/stellar/go-stellar-sdk/keypair"
 	rpc "github.com/stellar/go-stellar-sdk/protocols/rpc"
-	"github.com/stellar/go-stellar-sdk/txnbuild"
 	"github.com/stellar/go-stellar-sdk/xdr"
 
 	"github.com/soroauth/soroauth-go"
@@ -17,82 +14,6 @@ import (
 // transferAmount is 1 XLM in stroops. Small enough that friendbot funding
 // covers many runs.
 const transferAmount = 10_000_000
-
-// runTransfer drives the full flow §5.10 describes: simulate in record mode,
-// sign with soroauth, re-simulate in enforce mode with the signed entries so
-// the resources account for the signatures, assemble, sign the envelope as the
-// payer, submit, and poll.
-func runTransfer(
-	t *testing.T,
-	h *harness,
-	payer *keypair.Full,
-	op txnbuild.InvokeHostFunction,
-	signers []soroauth.Signer,
-	useUpgradedAuth bool,
-	transform func(t *testing.T, entries []xdr.SorobanAuthorizationEntry) []xdr.SorobanAuthorizationEntry,
-) submission {
-	t.Helper()
-
-	// 1. record
-	recordTx := h.build(t, h.account(t, payer.Address()), op)
-	recorded := h.simulate(t, recordTx, rpc.AuthModeRecord, useUpgradedAuth)
-
-	// 2. sign, with an optional transformation between recording and signing
-	validUntil, err := soroauth.ExpirationAfter(h.latestLedger(t), 1000)
-	if err != nil {
-		t.Fatalf("computing the expiration ledger: %v", err)
-	}
-
-	if len(recorded.Results) != 1 {
-		t.Fatalf("simulation returned %d results, want 1", len(recorded.Results))
-	}
-	recordedAuth := recorded.Results[0].AuthXDR
-	if recordedAuth == nil {
-		t.Fatal("simulation recorded no authorization entries; the transfer would not need soroauth at all")
-	}
-
-	entries := make([]xdr.SorobanAuthorizationEntry, 0, len(*recordedAuth))
-	for i, encoded := range *recordedAuth {
-		var entry xdr.SorobanAuthorizationEntry
-		if err := xdr.SafeUnmarshalBase64(encoded, &entry); err != nil {
-			t.Fatalf("decoding recorded auth entry %d: %v", i, err)
-		}
-		entries = append(entries, entry)
-	}
-	if len(entries) == 0 {
-		t.Fatal("simulation recorded no authorization entries")
-	}
-	if transform != nil {
-		entries = transform(t, entries)
-	}
-
-	signedEntries, err := soroauth.AuthorizeAll(context.Background(), entries, signers, validUntil, h.passphrase)
-	if err != nil {
-		t.Fatalf("AuthorizeAll: %v", err)
-	}
-	for i, entry := range signedEntries {
-		info, err := soroauth.Inspect(entry)
-		if err != nil {
-			t.Fatalf("inspecting signed entry %d: %v", i, err)
-		}
-		t.Logf("entry %d: %s address=%s signed=%v", i, info.CredentialType, info.Address, info.TopLevelSigned)
-	}
-
-	// 3. enforce, carrying the signed entries so the fee covers them
-	op.Auth = signedEntries
-	enforceTx := h.build(t, h.account(t, payer.Address()), op)
-	enforced := h.simulate(t, enforceTx, rpc.AuthModeEnforce, false)
-
-	// 4. assemble with the enforcing pass's resources, 5. sign as the payer
-	finalTx := h.assemble(t, h.account(t, payer.Address()), op, enforced)
-	finalTx, err = finalTx.Sign(h.passphrase, payer)
-	if err != nil {
-		t.Fatalf("signing the envelope as the payer: %v", err)
-	}
-
-	// 6. send and poll
-	return h.send(t, finalTx)
-}
 
 // TestScenarioA proves the legacy SOROBAN_CREDENTIALS_ADDRESS arm is accepted
 // by a live host: a payer submits a transfer of someone else's XLM, authorized
@@ -107,9 +28,14 @@ func TestScenarioA(t *testing.T) {
 	op := h.transferOp(t, scAddressOf(t, from.Address()), scAddressOf(t, to.Address()),
 		transferAmount, payer.Address())
 
-	result := runTransfer(t, h, payer, op,
-		[]soroauth.Signer{soroauth.NewEd25519Signer(from)},
-		false, nil)
+	result := runScenario(t, h, scenarioSpec{
+		payer:   payer,
+		op:      op,
+		signers: []soroauth.Signer{soroauth.NewEd25519Signer(from)},
+		// Scenario A is about the legacy arm, so the recording pass is not
+		// asked to upgrade what it records.
+		upgradedAuth: false,
+	})
 
 	t.Logf("tx hash: %s", result.Hash)
 	t.Logf("ledger:  %d", result.Ledger)
@@ -152,7 +78,7 @@ func TestScenarioB(t *testing.T) {
 		transferAmount, payer.Address())
 
 	var route string
-	transform := func(t *testing.T, entries []xdr.SorobanAuthorizationEntry) []xdr.SorobanAuthorizationEntry {
+	prepare := func(t *testing.T, entries []xdr.SorobanAuthorizationEntry, _ uint32) []xdr.SorobanAuthorizationEntry {
 		t.Helper()
 
 		recordedArm := entries[0].Credentials.Type.String()
@@ -180,9 +106,15 @@ func TestScenarioB(t *testing.T) {
 		return upgraded
 	}
 
-	result := runTransfer(t, h, payer, op,
-		[]soroauth.Signer{soroauth.NewEd25519Signer(from)},
-		true, transform)
+	result := runScenario(t, h, scenarioSpec{
+		payer:   payer,
+		op:      op,
+		signers: []soroauth.Signer{soroauth.NewEd25519Signer(from)},
+		// Ask the recording pass for V2; prepare upgrades locally if the
+		// best-effort flag was not honoured.
+		upgradedAuth: true,
+		prepare:      prepare,
+	})
 
 	t.Logf("tx hash: %s", result.Hash)
 	t.Logf("ledger:  %d", result.Ledger)
@@ -208,68 +140,4 @@ func TestScenarioB(t *testing.T) {
 	if result.Arm != "SorobanCredentialsTypeSorobanCredentialsAddressV2" {
 		t.Errorf("submitted envelope carried arm %q, want the address_v2 arm", result.Arm)
 	}
-}
-
-// runTransferExpectingFailure drives the same flow as runTransfer but is meant
-// for cases the host should reject: an under-signed multisig account, or a
-// delegate the account does not recognise.
-//
-// It deliberately skips the enforcing simulation. That pass would fail locally
-// for exactly the reason under test, and failing there would prove only that
-// simulation agrees — the point is to get the transaction in front of the real
-// host and see it refused there, after fees. Resources come from the recording
-// pass instead.
-func runTransferExpectingFailure(
-	t *testing.T,
-	h *harness,
-	payer *keypair.Full,
-	op txnbuild.InvokeHostFunction,
-	signers []soroauth.Signer,
-) submission {
-	t.Helper()
-
-	recordTx := h.build(t, h.account(t, payer.Address()), op)
-	recorded := h.simulate(t, recordTx, rpc.AuthModeRecord, true)
-
-	validUntil, err := soroauth.ExpirationAfter(h.latestLedger(t), 1000)
-	if err != nil {
-		t.Fatalf("computing the expiration ledger: %v", err)
-	}
-
-	if len(recorded.Results) != 1 || recorded.Results[0].AuthXDR == nil {
-		t.Fatal("simulation recorded no authorization entries")
-	}
-	entries := make([]xdr.SorobanAuthorizationEntry, 0, len(*recorded.Results[0].AuthXDR))
-	for i, encoded := range *recorded.Results[0].AuthXDR {
-		var entry xdr.SorobanAuthorizationEntry
-		if err := xdr.SafeUnmarshalBase64(encoded, &entry); err != nil {
-			t.Fatalf("decoding recorded auth entry %d: %v", i, err)
-		}
-		entries = append(entries, entry)
-	}
-
-	signedEntries, err := soroauth.AuthorizeAll(context.Background(), entries, signers, validUntil, h.passphrase)
-	if err != nil {
-		t.Fatalf("AuthorizeAll: %v", err)
-	}
-
-	op.Auth = signedEntries
-	// Instruction headroom, as on the delegates rejection path: the recording
-	// pass never verified a signature, so its instruction count can be too low
-	// to reach the check the run is about.
-	//
-	// Measured, not assumed: for the classic-account check this helper is used
-	// for, headroom 1 is already sufficient — reverting it still produces
-	// "signature weight is lower than threshold". Verifying a classic account
-	// signature is far cheaper than executing a custom account contract's
-	// __check_auth, which is what exhausted the budget in scenario E. The
-	// headroom is kept as insurance against host costs shifting, but it is not
-	// what makes the control valid. The assertion on the host's error is.
-	finalTx := h.assembleWithHeadroom(t, h.account(t, payer.Address()), op, recorded, 6)
-	finalTx, err = finalTx.Sign(h.passphrase, payer)
-	if err != nil {
-		t.Fatalf("signing the envelope as the payer: %v", err)
-	}
-
-	return h.send(t, finalTx)
 }

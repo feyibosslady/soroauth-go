@@ -48,7 +48,7 @@ func writeResults() {
 	var out strings.Builder
 	out.WriteString("# Testnet results\n\n")
 	out.WriteString("Every line below came from a real run against Stellar testnet. This file is\n")
-	out.WriteString("written by `go test -tags e2e ./e2e/...` and only when all five scenarios ran,\n")
+	out.WriteString("written by `go test -tags e2e ./e2e/...` and only when all six scenarios ran,\n")
 	out.WriteString("so it cannot be a partial record. Do not edit it by hand.\n\n")
 
 	fmt.Fprintf(&out, "- Date (UTC): %s\n", time.Now().UTC().Format("2006-01-02 15:04"))

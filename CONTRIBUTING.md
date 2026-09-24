@@ -30,7 +30,8 @@ go vet ./...
 go test ./...
 ```
 
-CI runs exactly these, plus the golden-vector drift check.
+CI runs exactly these, plus the golden-vector drift check and the tagged e2e
+scenario suite against Stellar testnet.
 
 ## Golden vectors
 
@@ -78,6 +79,40 @@ at.
 
 See [e2e/README.md](e2e/README.md) for what each scenario proves and why the two
 rejection scenarios exist.
+
+### Reproducing an e2e failure locally
+
+Reproduce the same test, RPC, and generated WASM that CI uses:
+
+```sh
+cd e2e/contracts && stellar contract build
+cd ../..
+go test -tags e2e -v -count=1 -run '^TestScenarioE$' ./e2e/...
+```
+
+Replace the test name with the failing scenario. For a complete run (the only
+kind that may regenerate `e2e/RESULTS.md`), omit `-run`:
+
+```sh
+go test -tags e2e -v -count=1 ./e2e/...
+```
+
+To reproduce against another compatible RPC, set `SOROAUTH_RPC_URL` for that
+command. Read the transaction hash, status, credential arm, and `RAW ERROR`
+from the verbose log. For the rejection controls, also inspect the host
+diagnostics printed after submission: C-control must report
+`signature weight is lower than threshold`, and E must report contract code `1`
+(`UnknownDelegate`). A failure alone is not the expected result—verify the
+specific rejection so an instruction-budget failure cannot masquerade as a
+passing test.
+
+The deterministic `TestSubmissionHeadroomRegression` fixture also runs under the
+e2e tag without making network calls. Run it directly when changing runner
+resource policy:
+
+```sh
+go test -tags e2e -v -run '^TestSubmissionHeadroomRegression$' ./e2e/...
+```
 
 ## Property-based tests
 
