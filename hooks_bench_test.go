@@ -14,19 +14,31 @@ func BenchmarkAuthorizeEntryWithHooks(b *testing.B) {
 	kp, _ := keypair.FromRawSeed(sha256.Sum256([]byte("soroauth-bench-hook")))
 	signer := NewEd25519Signer(kp)
 
+	address := signer.Address()
+	addr, err := ParseAddress(address)
+	if err != nil {
+		b.Fatalf("parsing the benchmark signer address: %v", err)
+	}
+
+	// AuthorizeEntry deep-copies the entry with an XDR round-trip, so the entry
+	// has to be a complete, valid XDR value: the SDK's encoder dereferences
+	// ScAddress.AccountId for an account address and ContractFn for a contract
+	// call, and panics on the zero values. A fixture with a zero ScAddress and
+	// no RootInvocation crashes the benchmark instead of measuring anything, so
+	// both are built for real here.
 	entry := xdr.SorobanAuthorizationEntry{
 		Credentials: xdr.SorobanCredentials{
 			Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
 			Address: &xdr.SorobanAddressCredentials{
-				Address:                   xdr.ScAddress{},
+				Address:                   addr,
 				Nonce:                     1,
 				SignatureExpirationLedger: xdr.Uint32(testValidUntilLedger),
 				Signature:                 xdr.ScVal{Type: xdr.ScValTypeScvVoid},
 			},
 		},
+		RootInvocation: benchInvocation(b),
 	}
 
-	address := signer.Address()
 	ctx := context.Background()
 
 	// Benchmark without hooks.
