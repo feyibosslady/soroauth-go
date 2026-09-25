@@ -1,0 +1,64 @@
+# Documentation checks that only need to run when documentation changes.
+#
+# This workflow is separate from ci.yml because its trigger is narrower:
+# spell-checking prose on every Go refactor wastes minutes and, worse,
+# trains people to ignore a red check that has nothing to do with their
+# change. The job below runs on pull requests touching Markdown (or the
+# dictionaries and tooling that decide what prose is wrong) and on pushes
+# to main, where it doubles as a periodic net that catches prose drift
+# merged without a docs PR.
+#
+# The check itself never needs a network or anything beyond the Go
+# toolchain already pinned in go.mod: it is `go run ./scripts/spellcheck`,
+# the same walk the root test TestDocumentationProseIsClean performs on
+# every `go test ./...` run. See CONTRIBUTING.md, "Spell-checking the
+# documentation".
+
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'LICENSE'
+      - 'testdata/spell/**'
+      - 'internal/spellcheck/**'
+      - 'scripts/spellcheck/**'
+      - 'spellcheck_test.go'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - '**.md'
+      - 'LICENSE'
+      - 'testdata/spell/**'
+      - 'internal/spellcheck/**'
+      - 'scripts/spellcheck/**'
+      - 'spellcheck_test.go'
+      - '.github/workflows/docs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  spellcheck:
+    name: prose is clean
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      # The CLI prints one line per finding and exits 1 if there are any,
+      # exactly as the root test does; running both is deliberate. The CLI
+      # output is what a doc-only contributor reads (it names file, line,
+      # column and the committed correction), and the test run proves the
+      # gating path `go test ./...` takes is the same walk, so the two can
+      # never quietly disagree about what is clean.
+      - name: run the checker CLI
+        run: go run ./scripts/spellcheck -v
+
+      - name: run the gate test
+        run: go test -run 'TestDocumentation' -v .
