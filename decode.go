@@ -24,12 +24,10 @@ import (
 //   - Input 1 MiB decoded. Soroban authorization entries carry a small
 //     invocation tree and its arguments; 1 MiB is orders of magnitude more than
 //     the golden vectors need and keeps a multi-megabyte base64 blob from being
-//     decoded at all.
-//   - Memory 16 MiB of decoded Go objects. This is a second, independent bound
-//     on how much a doctored length field can make the decoder allocate. It is
-//     deliberately larger than the input limit because decoding a value into Go
-//     structs costs more memory than the bytes it came from, and it is
-//     best-effort: go-xdr documents MaxMemoryBytes as approximate.
+//     decoded at all. go-xdr's MaxInputLen, which the SDK sets to the decoded
+//     length of the input, then bounds allocation during the decode itself: a
+//     doctored array length cannot read past the bytes the input actually
+//     carries.
 const (
 	// MaxDecodeDepth is the maximum nesting depth accepted when decoding an
 	// untrusted authorization entry, and the maximum nesting depth Inspect and
@@ -39,10 +37,6 @@ const (
 	// MaxDecodeInputBytes is the maximum decoded size of an untrusted
 	// authorization entry.
 	MaxDecodeInputBytes = 1 << 20
-
-	// MaxDecodeMemoryBytes is the approximate cumulative allocation the
-	// decoder may make while decoding one untrusted authorization entry.
-	MaxDecodeMemoryBytes = 16 << 20
 )
 
 // DecodeAuthorizationEntry decodes a base64 XDR SorobanAuthorizationEntry that
@@ -54,8 +48,8 @@ const (
 // for that case. xdr.SafeUnmarshalBase64 applies go-xdr's default maximum depth
 // of 1500 and, because it sets MaxInputLen from the input it was handed, it can
 // never refuse an input for being too long. DecodeAuthorizationEntry applies
-// the explicit limits documented on MaxDecodeDepth, MaxDecodeInputBytes and
-// MaxDecodeMemoryBytes instead, and reports a limit refusal as ErrDecodeLimit.
+// the explicit limits documented on MaxDecodeDepth and MaxDecodeInputBytes
+// instead, and reports a limit refusal as ErrDecodeLimit.
 //
 // The limits are fixed, not parameters. A caller that needs a different bound
 // has a protocol reason to make, and that reason belongs in this library rather
@@ -80,8 +74,7 @@ func DecodeAuthorizationEntry(encoded string) (xdr.SorobanAuthorizationEntry, er
 
 	var entry xdr.SorobanAuthorizationEntry
 	err := xdr.SafeUnmarshalBase64WithOptions(encoded, &entry, xdr.DecodeOptions{
-		MaxDepth:       MaxDecodeDepth,
-		MaxMemoryBytes: MaxDecodeMemoryBytes,
+		MaxDepth: MaxDecodeDepth,
 	})
 	if err != nil {
 		// go-xdr returns ErrMaxDecodingDepthReached (through the SDK's

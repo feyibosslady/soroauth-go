@@ -11,11 +11,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - `DecodeAuthorizationEntry`, the entry point for a base64
   `SorobanAuthorizationEntry` that came from somewhere else. It applies
-  deliberate limits — 64 levels of nesting, 1 MiB decoded input, and an
-  approximate 16 MiB decode budget — instead of go-xdr's default depth of 1500
-  and `SafeUnmarshalBase64`'s input-length override. The limits and their
-  rationale are documented on the function and on the exported
-  `MaxDecodeDepth`, `MaxDecodeInputBytes` and `MaxDecodeMemoryBytes` constants.
+  deliberate limits — 64 levels of nesting and 1 MiB of decoded input —
+  instead of go-xdr's default depth of 1500 and `SafeUnmarshalBase64`'s
+  input-length override. The limits and their rationale are documented on the
+  function and on the exported `MaxDecodeDepth` and `MaxDecodeInputBytes`
+  constants.
 - `ErrDecodeLimit`, returned when an untrusted entry exceeds one of those
   limits, so callers can tell "too big to process" apart from "malformed".
 

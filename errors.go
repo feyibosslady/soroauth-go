@@ -105,7 +105,7 @@ var (
 	// deliberate decode or traversal limits.
 	//
 	// The limits and their rationale are documented on MaxDecodeDepth,
-	// MaxDecodeInputBytes, MaxDecodeMemoryBytes and DecodeAuthorizationEntry.
+	// MaxDecodeInputBytes and DecodeAuthorizationEntry.
 	// This sentinel exists so a caller can tell "too big to be worth decoding"
 	// apart from "malformed", and refuse the first without retrying against a
 	// different size budget. It is a refusal, not a failure: the input might be

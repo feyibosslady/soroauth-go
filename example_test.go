@@ -8,7 +8,7 @@ import (
 
 // ExampleDecodeAuthorizationEntry shows the entry point for a base64 entry that
 // came from somewhere else. The limits it applies are documented on the
-// function and on MaxDecodeDepth, MaxDecodeInputBytes and MaxDecodeMemoryBytes.
+// function and on MaxDecodeDepth and MaxDecodeInputBytes.
 func ExampleDecodeAuthorizationEntry() {
 	var contractID xdr.ContractId
 	for i := range contractID {
