@@ -6,6 +6,7 @@
 /cmd/soroauth/soroauth
 *.test
 *.out
+/bin/
 
 # Node (golden-vector generator)
 node_modules/

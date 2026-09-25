@@ -22,7 +22,35 @@ Two optional pieces need more:
   `e2e/contracts/rust-toolchain.toml`, rustup will fetch it) and
   `stellar-cli` 28.0.0.
 
+## Make targets
+
+The Makefile wraps the common tasks, so the commands below exist in one place
+rather than across several documents. Run `make help` for the list.
+
+| Target | What it runs |
+|---|---|
+| `make` (default) | `fmt`, `vet` and `test` |
+| `make fmt` | fails if `gofmt -l .` reports anything |
+| `make vet` | `go vet ./...` |
+| `make test` | `go test ./...` |
+| `make build` | builds the CLI to `bin/soroauth` |
+| `make vectors` | `cd testdata/gen && npm ci && node gen.mjs` |
+| `make vectors-check` | regenerates the vectors and fails if the committed files changed |
+| `make e2e` | builds the test contract with `stellar-cli` and runs `go test -tags e2e -v ./e2e/...` |
+| `make clean` | removes `bin/` |
+
+No target hides a failure. `make fmt` exits non-zero when a file needs
+formatting instead of printing a warning, `make vectors-check` exits non-zero
+when regeneration changes a committed vector, and `make e2e` refuses to run
+without `stellar-cli` rather than failing later with an obscure test error.
+
 ## Before you open a pull request
+
+```sh
+make            # fmt, vet and test
+```
+
+The underlying commands are:
 
 ```sh
 gofmt -l .        # must print nothing
