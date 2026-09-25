@@ -12,11 +12,16 @@ import (
 const inspectUsage = `soroauth inspect — print an entry's structure as JSON.
 
 usage:
-  soroauth inspect --entry <base64>
+  soroauth inspect --entry <base64> [--json]
 
 Reports the credential arm, whether the payload is address-bound, the address,
 nonce and expiration ledger, which nodes carry signatures, the delegate tree,
 and the shape of the invocation tree.
+
+Without --json the report is pretty-printed for reading. With --json it is a
+single compact object, so it composes with jq and with the other subcommands.
+On error, --json prints a single JSON object with an "error" field to stdout
+and exits non-zero; nothing else is written to stdout.
 
 This is structural only. It reports which contract and function are being
 called, not what they do or whether the arguments are reasonable, so it is a
@@ -42,6 +47,7 @@ func runInspect(args []string, stdout, stderr io.Writer) error {
 	}
 
 	entryFlag := flags.String("entry", "", "the authorization entry, as base64 XDR")
+	jsonFlag := flags.Bool("json", false, "output a single compact JSON object")
 
 	if err := flags.Parse(args); err != nil {
 		return newErrorf(ExitUsageError, "%w", err)
@@ -49,12 +55,18 @@ func runInspect(args []string, stdout, stderr io.Writer) error {
 
 	entry, err := decodeEntry(*entryFlag)
 	if err != nil {
-		return newErrorf(ExitUsageError, "%w", err)
+		return writeJSONError(stdout, *jsonFlag, newErrorf(ExitUsageError, "%w", err))
 	}
 
 	info, err := soroauth.Inspect(entry)
 	if err != nil {
-		return newErrorf(ExitGeneralError, "%w", err)
+		return writeJSONError(stdout, *jsonFlag, newErrorf(ExitGeneralError, "%w", err))
+	}
+
+	if *jsonFlag {
+		enc := json.NewEncoder(stdout)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(info)
 	}
 
 	encoded, err := json.MarshalIndent(info, "", "  ")

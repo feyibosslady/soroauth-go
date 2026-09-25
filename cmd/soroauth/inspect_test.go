@@ -41,6 +41,68 @@ func inspectEntry(t *testing.T, entryXDR string) report {
 	return got
 }
 
+// TestInspectJSONFailureStaysOnStdout proves the failure path in JSON mode
+// stays machine-readable: exactly one JSON object on stdout, an error field in
+// it, and nothing on stderr for the run() layer to have to strip.
+func TestInspectJSONFailureStaysOnStdout(t *testing.T) {
+	stdout, stderr, err := runCLI(t, "inspect", "--entry", "not-base64", "--json")
+	if err == nil {
+		t.Fatal("inspect --json accepted a malformed entry")
+	}
+
+	var out struct {
+		Error string `json:"error"`
+	}
+	if jsonErr := json.Unmarshal([]byte(stdout), &out); jsonErr != nil {
+		t.Fatalf("stdout is not a single JSON object: %v\n%s", jsonErr, stdout)
+	}
+	if out.Error == "" {
+		t.Errorf("the JSON error object has no error field: %s", stdout)
+	}
+	if stderr != "" {
+		t.Errorf("stderr is not empty in JSON mode: %q", stderr)
+	}
+}
+
+// TestInspectFailureLeavesStdoutEmpty is the non-JSON half of the same rule:
+// a failed inspect emits no report fragments a caller could mistake for
+// results.
+func TestInspectFailureLeavesStdoutEmpty(t *testing.T) {
+	stdout, _, err := runCLI(t, "inspect", "--entry", "not-base64")
+	if err == nil {
+		t.Fatal("inspect accepted a malformed entry")
+	}
+	if stdout != "" {
+		t.Errorf("stdout is not empty on failure: %q", stdout)
+	}
+}
+
+// TestInspectJSONOutputIsResultsOnly checks the success path emits exactly one
+// JSON object and no trailing text.
+func TestInspectJSONOutputIsResultsOnly(t *testing.T) {
+	v := loadVector(t, "v2_single_testnet")
+
+	stdout, stderr, err := runCLI(t, "inspect", "--entry", v.UnsignedEntryXDR, "--json")
+	if err != nil {
+		t.Fatalf("inspect --json returned an error: %v", err)
+	}
+	if stderr != "" {
+		t.Errorf("stderr is not empty: %q", stderr)
+	}
+
+	trimmed := strings.TrimSpace(stdout)
+	if !strings.HasPrefix(trimmed, "{") || !strings.HasSuffix(trimmed, "}") {
+		t.Errorf("stdout is not a single JSON object: %q", stdout)
+	}
+	var got report
+	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\n%s", err, stdout)
+	}
+	if got.CredentialType != "address_v2" {
+		t.Errorf("credential_type is %q, want address_v2", got.CredentialType)
+	}
+}
+
 func TestInspectReportsAV2Entry(t *testing.T) {
 	v := loadVector(t, "v2_single_testnet")
 	got := inspectEntry(t, v.UnsignedEntryXDR)
