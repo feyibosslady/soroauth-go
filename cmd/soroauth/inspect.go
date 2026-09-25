@@ -54,6 +54,7 @@ func runInspect(args []string, stdout, stderr io.Writer) error {
 	}
 
 	entryFlag := flags.String("entry", "", "the authorization entry or transaction envelope, as base64 XDR")
+	jsonFlag := flags.Bool("json", false, "output as JSON")
 
 	if err := flags.Parse(args); err != nil {
 		return newErrorf(ExitUsageError, "%w", err)
@@ -81,6 +82,17 @@ func runInspect(args []string, stdout, stderr io.Writer) error {
 			return newErrorf(ExitGeneralError, "%w", err)
 		}
 		report = info
+	}
+
+	if *jsonFlag {
+		// One compact object on one line, so the report composes with jq and
+		// with the other subcommands without a pretty-printer in between.
+		enc := json.NewEncoder(stdout)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(report); err != nil {
+			return newErrorf(ExitGeneralError, "encoding the report: %w", err)
+		}
+		return nil
 	}
 
 	encoded, err := json.MarshalIndent(report, "", "  ")
