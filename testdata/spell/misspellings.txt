@@ -1,0 +1,161 @@
+# Known misspellings — soroauth spell check (issue #151)
+#
+# One "typo->correction" pair per line. Both sides are lowercase alphabetic
+# tokens: the tokenizer case-folds and splits at lower→upper boundaries, so
+# "RecieveSomething" is caught by the "recieve" row. Entries the tokenizer
+# can never see (digits, punctuation) are rejected at startup — fail closed,
+# never silent dead weight.
+#
+# Inflections: rows are base forms. The checker also matches mechanical
+# English inflections of a listed row (-s, -es, -ed, -ing, -ings, -ly, and
+# y->ies/ied) and inflects the correction back, so "recieves" is caught by
+# the "recieve" row and suggests "receives". Stripping only extends a row
+# that already exists; it cannot turn an ordinary word into a finding.
+#
+# Provenance: the initial list is the cross-product of the classic
+# codespell "rare" and Wikipedia "commonly misspelled words" lists against
+# every word that actually occurs in this repository's Markdown corpus
+# (extracted with the same tokenizer and diffed against the lists), then
+# manually reduced to rows with at least one real occurrence or a
+# plausible near miss. Corrections follow Merriam-Webster and the Google
+# developer documentation style guide. When a row's word appears in the
+# corpus, the row was validated against that occurrence in context before
+# being committed — see the commit body for the command and its output.
+#
+# Ordering: alphabetical by typo. Add new rows in the same order.
+#
+# Maintenance contract (CONTRIBUTING.md, "Spell-checking the
+# documentation"):
+#   - a row is added when a real typo is caught or corrected;
+#   - a row is removed only with the corpus commit that fixed every
+#     occurrence, so the file never names a typo that is currently live;
+#   - never add a project term here; it belongs in words.txt.
+
+acceptible->acceptable
+accross->across
+adress->address
+agressive->aggressive
+alot->a lot
+apparant->apparent
+arguement->argument
+athorization->authorization
+aquire->acquire
+authentification->authentication
+authorisation->authorization
+basicly->basically
+becuase->because
+begining->beginning
+beleive->believe
+breif->brief
+calender->calendar
+catagory->category
+certainity->certainty
+cheif->chief
+colaboration->collaboration
+comit->commit
+commited->committed
+commitee->committee
+compatability->compatibility
+concious->conscious
+definately->definitely
+dependant->dependent
+desicion->decision
+diffrent->different
+embarass->embarrass
+enviroment->environment
+existance->existence
+experiance->experience
+explicitely->explicitly
+familar->familiar
+finaly->finally
+foriegn->foreign
+funtion->function
+garantee->guarantee
+gaurd->guard
+grammer->grammar
+hapen->happen
+hierachy->hierarchy
+immediatly->immediately
+independant->independent
+indicat->indicate
+inseperate->inseparate
+interupt->interrupt
+invaide->invalid
+invaild->invalid
+jave->java
+langage->language
+libary->library
+liscense->license
+maintainance->maintenance
+managable->manageable
+marshalling->marshaling
+mispell->misspell
+neccessary->necessary
+necesary->necessary
+occured->occurred
+occurence->occurrence
+ommitted->omitted
+oppurtunity->opportunity
+organise->organize
+overide->override
+paramater->parameter
+paranthesis->parenthesis
+pasive->passive
+peice->piece
+perfomance->performance
+persistant->persistent
+posession->possession
+possable->possible
+prefered->preferred
+priviledge->privilege
+probaly->probably
+procede->proceed
+proccess->process
+progess->progress
+prominant->prominent
+pronounciation->pronunciation
+proove->prove
+propogate->propagate
+recieve->receive
+reciept->receipt
+recomend->recommend
+referal->referral
+reguardless->regardless
+relevent->relevant
+reproducable->reproducible
+requirment->requirement
+ressource->resource
+responce->response
+seperate->separate
+sercumstance->circumstance
+signiture->signature
+similiar->similar
+smoe->some
+sould->should
+specifiy->specify
+stratgies->strategies
+submition->submission
+substitue->substitute
+succesful->successful
+successfull->successful
+sucess->success
+supress->suppress
+suprise->surprise
+tendancy->tendency
+threshhold->threshold
+truely->truly
+unneccessary->unnecessary
+unqiue->unique
+untill->until
+usefull->useful
+varient->variant
+verifyed->verified
+wieght->weight
+wether->whether
+whith->with
+wich->which
+wierd->weird
+wih->with
+wont->won't
+writting->writing
+yeild->yield

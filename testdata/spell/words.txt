@@ -1,0 +1,90 @@
+# Project word list — soroauth spell check (issue #151)
+#
+# One lowercase token per line. Tokens are what the checker's tokenizer can
+# produce: runs of ASCII letters, case-folded, split at lower→upper
+# boundaries. An entry with digits, punctuation or uppercase can never be
+# seen by the checker and is rejected by New (fail closed), which is why
+# every line here is a plain lowercase word.
+#
+# This file is NOT a whitelist consulted per token: the checker only flags
+# a token when it is on the misspelling list or is a doubled English
+# function word ("the the"). An unlisted word is never a finding, which is
+# why protocol terms can never fail the check. Each row records why the
+# term exists so the next maintainer can tell a real word from an accident.
+#
+# Adding a row here means adding the same reason to its comment.
+
+# --- Project and package names ---
+# soroauth: this library and CLI (github.com/soroauth/soroauth-go).
+soroauth
+# go-stellar-sdk tokenizes as "go" + "stellar" + "sdk", all ordinary words
+# or covered below; "stellar" is here because it also appears inside
+# identifiers like "stellarExpert" and "stellarcli".
+stellar
+# stellar-cli, stellar-core, stellar.expert: the token "cli" also appears
+# in prose ("the CLI"); "expert" appears in stellar.expert explorer links.
+cli
+expert
+
+# --- Stellar protocol and ecosystem terms ---
+# Soroban: the smart contracts platform (soroban.sdf.org). Tokenizes from
+# "Soroban", "soroban-", "soroban_testnet", "SorobanAuthorizationEntry" and
+# every camelCase variant.
+soroban
+# strkey / strkeys: the Stellar string encoding of keys (G…/C…/M…
+# addresses); the plural is one letters run.
+strkey
+# xdr: External Data Representation, the wire encoding (RFC 4506), from
+# "XDR" in prose; an all-caps acronym stays one letters run.
+xdr
+# scval / scaddress / screference and the other Sc-prefixed SDK type names
+# in prose: they tokenize to the lowercase forms below.
+scval
+scaddress
+# muxed: muxed accounts (CAP-45 style M… addresses).
+muxed
+# fee bump: a fee-bump transaction's inner transaction (CAP-15).
+fee
+
+# --- Signing and crypto terms ---
+# ed: the letters run left when digits split "ed25519" / "Ed25519Signer".
+ed
+# sha: SHA-256 hash (the letters run of "sha256" and "SHA-256").
+sha
+# hmac: HMAC-SHA-256 constructions in the SAC and token narratives.
+hmac
+
+# --- CAP and envelope names in prose ---
+# The token "cap" (from "CAP-46-11", "CAP-71-01") is an ordinary word; the
+# numbers are invisible to the tokenizer, no row is needed for the numbers.
+# envelope: TransactionEnvelope, fee-bump envelope prose.
+envelope
+# invokehost: the camelCase split half of "invokeHostFunction" (the other
+# half, "function", is ordinary English).
+invokehost
+# authorizationentry: camelCase splits "AuthorizationEntry" into
+# "authorization" + "entry", both ordinary; this row covers prose that
+# writes the name without the boundary.
+
+# --- Testing and CI vocabulary ---
+# testnet: Stellar's public test network, named throughout.
+testnet
+# e2e: the build tag and directory. "e" is a single letter (never checked);
+# the digit "2" is invisible. "e2e" as a whole can never be a token, so no
+# row exists for it: this comment is the record.
+# friendbot: the testnet faucet.
+friendbot
+# codecov: the coverage service the CI workflow publishes to.
+codecov
+# gofmt / govulncheck style go-tool names in prose: "gofmt" tokenizes as
+# "gofmt"; "govet" as "govet"; the vet and fmt binaries are standard tools.
+gofmt
+# xeon: the Intel CPU model named in measured-commit evidence bodies.
+xeon
+
+# --- Domain prose that is not standard English but is intended ---
+# strkeys: plural of strkey; the letters run is "strkeys" as a whole.
+strkeys
+# signers, per the README's signer table prose; ordinary English, listed
+# because "signer" appears in identifier contexts like "ed25519Signer".
+signer
