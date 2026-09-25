@@ -101,6 +101,21 @@ var (
 	// rather than on-chain.
 	ErrTooManySignatures = errors.New("too many signatures for a classic account")
 
+	// ErrDecodeLimit is returned when untrusted input is refused for exceeding
+	// one of the bounds this library applies to it: MaxDecodeInputBytes on the
+	// encoded size, or MaxDecodeDepth on XDR nesting and on the recursive walks
+	// over an already-decoded entry.
+	//
+	// The Go SDK's defaults are not a bound chosen for untrusted input:
+	// xdr.SafeUnmarshalBase64 sets MaxInputLen from the input it was handed, so
+	// it can never refuse an input for being too long, and it leaves go-xdr's
+	// default depth of 1500 in place. An entry that comes from a simulation,
+	// the network, or a caller is untrusted, so DecodeAuthorizationEntry and
+	// the traversals apply explicit limits and report this sentinel when one
+	// bites. A refusal is the fail-closed outcome: the alternative is doing
+	// unbounded work on input an attacker chose.
+	ErrDecodeLimit = errors.New("untrusted input exceeds a decode limit")
+
 	// ErrNoInvokeOperation is returned when a transaction envelope carries no
 	// invokeHostFunction operation, and therefore no authorization entries at
 	// all.
