@@ -95,7 +95,15 @@ type credentialNode struct {
 // Under CAP-71-01 a delegate may itself delegate, to any depth, and every one
 // of those nodes signs the same payload. So a signer's address can legitimately
 // appear at several depths at once, and all of them must be filled.
-func delegateNodesOf(nodes []xdr.SorobanDelegateSignature) ([]credentialNode, error) {
+//
+// The recursion is bounded by MaxDecodeDepth. The entry is normally the output
+// of DecodeAuthorizationEntry, but a caller may have decoded it with the SDK's
+// own default or built it in memory, and this walk must not be the thing that
+// follows a pathological tree to the end.
+func delegateNodesOf(nodes []xdr.SorobanDelegateSignature, depth int) ([]credentialNode, error) {
+	if err := checkTraversalDepth(depth); err != nil {
+		return nil, err
+	}
 	var out []credentialNode
 	for i := range nodes {
 		encoded, err := addressBytes(nodes[i].Address)
@@ -106,7 +114,7 @@ func delegateNodesOf(nodes []xdr.SorobanDelegateSignature) ([]credentialNode, er
 		// entry being filled in; the slice is never regrown here.
 		out = append(out, credentialNode{encoded: encoded, signature: &nodes[i].Signature})
 
-		nested, err := delegateNodesOf(nodes[i].NestedDelegates)
+		nested, err := delegateNodesOf(nodes[i].NestedDelegates, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +141,7 @@ func credentialNodes(entry *xdr.SorobanAuthorizationEntry) ([]credentialNode, er
 	nodes := []credentialNode{{encoded: topLevel, signature: &credentials.Signature}}
 
 	if entry.Credentials.Type == xdr.SorobanCredentialsTypeSorobanCredentialsAddressWithDelegates {
-		delegates, err := delegateNodesOf(entry.Credentials.AddressWithDelegates.Delegates)
+		delegates, err := delegateNodesOf(entry.Credentials.AddressWithDelegates.Delegates, 1)
 		if err != nil {
 			return nil, err
 		}

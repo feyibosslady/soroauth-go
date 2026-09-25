@@ -79,9 +79,22 @@ Two properties hold throughout and are the reason most of the code exists:
 | `batch.go` | `AuthorizeAll`, all-or-nothing |
 | `expiration.go` | `ExpirationAfter` |
 | `address.go` | `ParseAddress` / `FormatAddress` (G… and C… only) |
-| `errors.go` | The nine exported sentinels |
+| `decode.go` | `DecodeAuthorizationEntry` and the deliberate limits (`MaxDecodeDepth`, `MaxDecodeInputBytes`, `MaxDecodeMemoryBytes`) applied to untrusted entries and to the recursive walks over them |
+| `errors.go` | The exported sentinels |
 | `internal/xdrcopy` | Deep copy by XDR round-trip |
 | `cmd/soroauth` | CLI: `payload`, `sign`, `delegates`, `inspect` |
+
+## Untrusted input
+
+`Inspect` and the CLI are pointed at entries from elsewhere by design, so the
+base64 decoder and every recursive walk over an entry are bounded on purpose.
+`DecodeAuthorizationEntry` applies 64 levels of nesting, 1 MiB of decoded input
+and an approximate 16 MiB decode budget, and returns `ErrDecodeLimit` when one
+of them bites. `Inspect`, `ValidateDelegateOrder`, the credential-node walk in
+`AuthorizeEntry`, and `WithDelegates` refuse a tree nested past 64 levels for
+the same reason. The values and their rationale live on the constants in
+`decode.go`. This does not change any emitted bytes: the limits only bound what
+the library is willing to read.
 
 ## The delegate model
 

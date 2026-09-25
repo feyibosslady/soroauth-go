@@ -94,6 +94,19 @@ func TestRunHelp(t *testing.T) {
 	}
 }
 
+// TestDecodeEntryRejectsOversizedInput proves the CLI uses the library's
+// bounded decoder rather than the SDK's unbounded-length helper, and that it
+// refuses before doing any base64 work (the input is not valid base64).
+func TestDecodeEntryRejectsOversizedInput(t *testing.T) {
+	got, err := decodeEntry(strings.Repeat("A", 2<<20))
+	if err == nil {
+		t.Fatalf("decodeEntry accepted a 2 MiB input, returning %+v", got)
+	}
+	if !strings.Contains(err.Error(), "decode limit") {
+		t.Errorf("error %q does not name the decode limit", err)
+	}
+}
+
 func TestResolveNetwork(t *testing.T) {
 	tests := []struct {
 		name    string

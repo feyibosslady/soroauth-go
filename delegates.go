@@ -67,8 +67,17 @@ func sortDelegateLevel(nodes []delegateNode) error {
 }
 
 // buildDelegateNodes converts Delegate descriptors into XDR nodes, recursively,
-// sorting and de-duplicating each level as it goes.
-func buildDelegateNodes(delegates []Delegate) ([]xdr.SorobanDelegateSignature, error) {
+// sorting and de-duplicating each level as it goes. depth is the current level,
+// with the top level at 1.
+//
+// A caller-supplied Delegate tree is just as untrusted as a decoded one when it
+// comes from an account's advertised policy, so the recursion is bounded by
+// MaxDecodeDepth and a tree past that ceiling is refused with ErrDecodeLimit
+// rather than followed.
+func buildDelegateNodes(delegates []Delegate, depth int) ([]xdr.SorobanDelegateSignature, error) {
+	if err := checkTraversalDepth(depth); err != nil {
+		return nil, err
+	}
 	if len(delegates) == 0 {
 		return nil, nil
 	}
@@ -89,7 +98,7 @@ func buildDelegateNodes(delegates []Delegate) ([]xdr.SorobanDelegateSignature, e
 			signature = *delegate.Signature
 		}
 
-		nested, err := buildDelegateNodes(delegate.Nested)
+		nested, err := buildDelegateNodes(delegate.Nested, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +189,7 @@ func WithDelegates(
 			ErrAlreadySigned)
 	}
 
-	nodes, err := buildDelegateNodes(delegates)
+	nodes, err := buildDelegateNodes(delegates, 1)
 	if err != nil {
 		return xdr.SorobanAuthorizationEntry{}, fmt.Errorf("soroauth: with delegates: %w", err)
 	}
@@ -215,8 +224,13 @@ func WithDelegates(
 	return copied, nil
 }
 
-// validateDelegateLevel checks one delegates array, then recurses.
-func validateDelegateLevel(nodes []xdr.SorobanDelegateSignature) error {
+// validateDelegateLevel checks one delegates array, then recurses. depth is the
+// current level, with the top level at 1, and is bounded by MaxDecodeDepth for
+// the same reason delegateNodesOf is.
+func validateDelegateLevel(nodes []xdr.SorobanDelegateSignature, depth int) error {
+	if err := checkTraversalDepth(depth); err != nil {
+		return err
+	}
 	var previous []byte
 	for i := range nodes {
 		current, err := addressBytes(nodes[i].Address)
@@ -243,7 +257,7 @@ func validateDelegateLevel(nodes []xdr.SorobanDelegateSignature) error {
 		}
 		previous = current
 
-		if err := validateDelegateLevel(nodes[i].NestedDelegates); err != nil {
+		if err := validateDelegateLevel(nodes[i].NestedDelegates, depth+1); err != nil {
 			return err
 		}
 	}
@@ -269,7 +283,7 @@ func ValidateDelegateOrder(entry xdr.SorobanAuthorizationEntry) error {
 		return fmt.Errorf("soroauth: validate delegate order: address_with_delegates credentials arm is empty")
 	}
 
-	if err := validateDelegateLevel(entry.Credentials.AddressWithDelegates.Delegates); err != nil {
+	if err := validateDelegateLevel(entry.Credentials.AddressWithDelegates.Delegates, 1); err != nil {
 		return fmt.Errorf("soroauth: validate delegate order: %w", err)
 	}
 	return nil

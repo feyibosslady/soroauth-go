@@ -20,6 +20,8 @@ import (
 
 	"github.com/stellar/go-stellar-sdk/network"
 	"github.com/stellar/go-stellar-sdk/xdr"
+
+	"github.com/soroauth/soroauth-go"
 )
 
 // Exit codes for distinct failure classes.
@@ -150,12 +152,20 @@ func resolveNetwork(value string) (string, error) {
 }
 
 // decodeEntry parses a base64 authorization entry from a flag value.
+//
+// The entry comes from the command line, which means it came from somewhere
+// else: a simulation, another tool, a transcript. It is decoded through the
+// library's bounded decoder rather than xdr.SafeUnmarshalBase64 directly, so a
+// pathological entry is refused at a deliberate limit instead of at the SDK's
+// much looser default. Errors that match ErrDecodeLimit get the usage exit
+// code, since the input is what is wrong and no retry against the same input
+// can succeed.
 func decodeEntry(value string) (xdr.SorobanAuthorizationEntry, error) {
 	if value == "" {
 		return xdr.SorobanAuthorizationEntry{}, newErrorf(ExitUsageError, "--entry is required")
 	}
-	var entry xdr.SorobanAuthorizationEntry
-	if err := xdr.SafeUnmarshalBase64(value, &entry); err != nil {
+	entry, err := soroauth.DecodeAuthorizationEntry(value)
+	if err != nil {
 		return xdr.SorobanAuthorizationEntry{}, newErrorf(ExitUsageError, "decoding --entry: %w", err)
 	}
 	return entry, nil

@@ -5,6 +5,43 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `DecodeAuthorizationEntry`, the entry point for a base64
+  `SorobanAuthorizationEntry` that came from somewhere else. It applies
+  deliberate limits — 64 levels of nesting, 1 MiB decoded input, and an
+  approximate 16 MiB decode budget — instead of go-xdr's default depth of 1500
+  and `SafeUnmarshalBase64`'s input-length override. The limits and their
+  rationale are documented on the function and on the exported
+  `MaxDecodeDepth`, `MaxDecodeInputBytes` and `MaxDecodeMemoryBytes` constants.
+- `ErrDecodeLimit`, returned when an untrusted entry exceeds one of those
+  limits, so callers can tell "too big to process" apart from "malformed".
+
+### Changed
+
+- `Inspect`, `ValidateDelegateOrder`, `AuthorizeEntry`'s credential-node walk,
+  and `WithDelegates` now bound their recursion with `MaxDecodeDepth`, so an
+  entry or delegate tree nested past the ceiling is refused with
+  `ErrDecodeLimit` rather than walked to its end. `Inspect` previously walked
+  both the invocation tree and the delegate tree without a bound, and
+  `WithDelegates` previously built a caller-supplied tree of any depth.
+- The `soroauth` CLI's `--entry` decoding goes through
+  `DecodeAuthorizationEntry`, so `payload`, `sign`, `delegates` and `inspect`
+  all refuse a pathological entry at the same deliberate limit.
+
+### Migration
+
+- Callers that decoded base64 entries with `xdr.SafeUnmarshalBase64` should
+  switch to `DecodeAuthorizationEntry`. The wire format is unchanged; only the
+  bounds and the error are.
+- Callers that legitimately build or decode authorization entries, invocation
+  trees, or delegate trees deeper than 64 levels must raise the limit in this
+  library (see `MaxDecodeDepth`) rather than route around it. No protocol rule
+  requires such depth, and 64 is far above every committed golden vector.
+- No emitted bytes change, so no golden vector is regenerated.
+
 ## [0.1.0] — 2026-09-16
 
 First release. Unaudited.

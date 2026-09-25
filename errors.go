@@ -100,4 +100,16 @@ var (
 	// at :185 with "too many account signers"). Exceeding it is rejected here
 	// rather than on-chain.
 	ErrTooManySignatures = errors.New("too many signatures for a classic account")
+
+	// ErrDecodeLimit is returned when an untrusted entry exceeds one of the
+	// deliberate decode or traversal limits.
+	//
+	// The limits and their rationale are documented on MaxDecodeDepth,
+	// MaxDecodeInputBytes, MaxDecodeMemoryBytes and DecodeAuthorizationEntry.
+	// This sentinel exists so a caller can tell "too big to be worth decoding"
+	// apart from "malformed", and refuse the first without retrying against a
+	// different size budget. It is a refusal, not a failure: the input might be
+	// a perfectly valid entry for a protocol this build does not intend to
+	// process.
+	ErrDecodeLimit = errors.New("untrusted input exceeds a decode limit")
 )
