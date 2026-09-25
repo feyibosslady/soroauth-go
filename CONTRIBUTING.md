@@ -33,8 +33,10 @@ go vet ./...
 go test -race ./...
 ```
 
-CI runs exactly these, plus the golden-vector drift check and the signing-path
-budget check (see [Benchmarks](#benchmarks)). The suite runs with `-race`
+CI runs exactly these, plus the golden-vector drift check, the signing-path
+budget check (see [Benchmarks](#benchmarks)), and the documentation spell
+check (see [Spell-checking the documentation](#spell-checking-the-documentation)).
+The suite runs with `-race`
 because `internal/xdrcopy` shares encoder and decoder buffers across calls
 through `sync.Pool`; without the detector, `TestCopyConcurrentReuse` would
 still pass on code that races.
@@ -192,6 +194,61 @@ git ls-remote --tags https://github.com/<owner>/<repo> | grep 'refs/tags/v7$'
 Use the first column's SHA (for an *annotated* tag, `git ls-remote` also
 prints a `refs/tags/v7^{}` line — use that dereferenced commit SHA, not the
 tag object's own SHA).
+
+## Spell-checking the documentation
+
+The Markdown prose is spell-checked. The check lives in
+`internal/spellcheck`, is run by `go run ./scripts/spellcheck` (the CLI,
+which names file, line, column and the committed correction), by the root
+test `TestDocumentationProseIsClean` (so `go test ./...` gates the docs),
+and by the `spellcheck` job in `.github/workflows/docs.yml`, which triggers
+on pull requests that touch Markdown or the checker's own files.
+
+The checker is a **misspelling matcher, not a dictionary lookup**: a token
+is flagged because it is on the committed misspelling list
+(`testdata/spell/misspellings.txt`, one `typo->correction` pair per line),
+or because an English function word repeats, as in a doubled "the",
+never because it
+is an unknown word. That is what makes it safe for this repository: CAP-71-01,
+Soroban, strkey, XDR, ed25519 and every other protocol term are unlisted
+words, and an unlisted word can never fail the check. The trade is stated
+rather than hidden: a novel misspelling is caught only once someone adds it
+to the list.
+
+Prose extraction skips fenced code blocks, inline code spans, link and image
+targets, bare URLs, reference definitions and HTML comments; code and URLs
+are not English. Excluded files are listed explicitly in
+`spellcheck.DocExcluded` (currently `LICENSE`, `CHANGELOG.md`,
+`e2e/RESULTS.md` and `docs/recorded/`): recorded provenance is history, and
+silently rewriting it would falsify the record. A new Markdown file is
+checked by default — an exclusion has to be justified in code.
+
+The two dictionaries in `testdata/spell/` are data, with rules:
+
+- **`misspellings.txt`** grows when a real typo is caught or corrected. A
+  row is removed only in the same commit that fixed every live occurrence,
+  so the file never names a typo that is currently in the corpus.
+- **`words.txt`** exists to document project terms that a reader might
+  mistake for typos. It is not consulted per token — the matcher does not
+  need it — but it records why each term is legitimate, and the checker
+  refuses a word that is also on the misspelling list, so the two files
+  cannot contradict each other. Add a row with its reason in a comment.
+- Both files are validated on every run (`New` fails closed on an entry the
+  tokenizer can never see — digits, punctuation, an empty correction, a
+  self-correction — and on contradictions), and
+  `TestCommittedDictionariesAreValid` keeps a bad row from reaching CI.
+
+Running it locally:
+
+```sh
+go run ./scripts/spellcheck -v    # per-file summary plus findings
+go test -run TestDocumentation -v .   # the same walk, as the suite runs it
+```
+
+Because `README.md` and `ARCHITECTURE.md` must link this section (issue
+#151's reachability requirement), the link itself is enforced by
+`TestDocumentationLinksTheSpellCheck` in `spellcheck_test.go`: removing the
+links fails the suite.
 
 ## Golden vectors
 

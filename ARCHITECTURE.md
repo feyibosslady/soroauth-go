@@ -5,7 +5,10 @@ one. This document explains what that involves, how the pieces fit, and which
 rules are protocol requirements rather than local choices.
 
 If you are here to pick up an issue, read [CONTRIBUTING.md](CONTRIBUTING.md)
-first for setup and the PR checklist. This file is the map.
+first for setup and the PR checklist — including
+[Spell-checking the documentation](CONTRIBUTING.md#spell-checking-the-documentation),
+which governs the prose in this and every other Markdown file. This file is
+the map.
 
 ## The problem
 

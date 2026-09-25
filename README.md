@@ -406,6 +406,8 @@ outside its author. Read the code before you sign anything valuable with it.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Golden vectors are never edited by hand.
+The documentation is spell-checked on every PR that touches it — see
+[Spell-checking the documentation](CONTRIBUTING.md#spell-checking-the-documentation).
 Security reports go through [SECURITY.md](SECURITY.md), not the issue tracker.
 
 ## License
