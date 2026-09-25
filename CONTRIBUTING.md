@@ -21,6 +21,9 @@ Two optional pieces need more:
 - **Running the e2e tests** needs Rust 1.93.0 (pinned in
   `e2e/contracts/rust-toolchain.toml`, rustup will fetch it) and
   `stellar-cli` 28.0.0.
+- **Working on the wallet SDK adapter** (`adapters/walletsdk`) needs nothing
+  extra, but it is a module of its own with its own test loop; see
+  [The nested adapter module](#the-nested-adapter-module).
 
 ## Make targets
 
@@ -55,10 +58,168 @@ The underlying commands are:
 ```sh
 gofmt -l .        # must print nothing
 go vet ./...
-go test ./...
+go test -race ./...
 ```
 
-CI runs exactly these, plus the golden-vector drift check.
+CI runs exactly these, plus the golden-vector drift check and the signing-path
+budget check (see [Benchmarks](#benchmarks)). The suite runs with `-race`
+because `internal/xdrcopy` shares encoder and decoder buffers across calls
+through `sync.Pool`; without the detector, `TestCopyConcurrentReuse` would
+still pass on code that races.
+
+### The nested adapter module
+
+`adapters/walletsdk` is a Go module of its own, so `./...` from the repository
+root does not reach it: the go tool stops at the first directory holding a
+`go.mod`. It has its own CI job, and its own loop:
+
+```sh
+cd adapters/walletsdk
+gofmt -l .
+go vet ./...
+go test -race ./...
+```
+
+It is a separate module on purpose: it is the only place a wallet SDK is
+named, and keeping it out of the root module is what stops `go get` of
+soroauth from pulling one in. Nothing in the root module may depend on it,
+and `TestRootModuleStaysFreeOfWalletSDKs` in the adapter's own tests fails if
+a wallet SDK appears in the root `go.mod` or `go.sum`.
+
+Because the two are separate modules, `adapters/walletsdk/go.mod` carries a
+`replace` back to the repository root, so the adapter is tested against the
+soroauth in this checkout rather than a published version. The root module is
+not tagged yet; once it is, the adapter is the module that needs its own
+`adapters/walletsdk/vX.Y.Z` tags before anyone outside this repository can
+`go get` it.
+
+## Benchmarks
+
+The signing path has committed benchmarks in `bench_signing_test.go` covering
+`Preimage`, `Payload`, `AuthorizeEntry` on all three arms (legacy, V2,
+delegates, including a depth-8 delegate chain), `AuthorizeAll` over a
+12-entry, 4-signer batch, and `BenchmarkXDRCopy` — the deep copy in
+`internal/xdrcopy` that every entry-returning function performs, in its two
+on-path shapes (an authorization entry and a `HashIdPreimage`).
+
+```sh
+# Full suite with allocation stats
+go test -run '^$' -bench . -benchmem -count=1 .
+
+# One arm
+go test -run '^$' -bench 'BenchmarkAuthorizeEntry/delegates' -benchmem .
+```
+
+CI runs the same command and gates on **allocs/op and B/op** only, via:
+
+```sh
+go test -run '^$' -bench . -benchmem -count=1 . | tee /tmp/bench.out
+go run ./scripts/checkbench /tmp/bench.out testdata/bench/budgets.json
+```
+
+`ns/op` is reported for humans in PRs (with the machine it came from) but never
+fails the build: wall-clock on a shared runner is noise. Allocation counts are
+deterministic for a given Go version and are the regression signal.
+
+`testdata/bench/budgets.json` is the committed baseline. Signing-path budgets
+carry ~40% headroom over the measured values so a Go minor bump does not flake
+CI. If the checker fails:
+
+- If the increase is a bug, fix the bug; do not raise the budget.
+- If the increase is intentional, raise the budget in the **same commit** as
+  the change and say in the commit body which function got more expensive and
+  why that is acceptable.
+- Never lower a budget without a fresh local measurement on the machine named
+  in the commit body.
+
+When you add a benchmark, add a budget in the same commit. The checker prints
+`WARN … no budget` for any benchmark it sees without one, and
+`FAIL … benchmark not found` if a budgeted name is missing from the output —
+so a renamed benchmark cannot silently drop out of the gate.
+
+### Reproducing a budget failure locally
+
+A CI failure from the `bench` job is a `FAIL` line naming the benchmark and
+the budget it exceeded:
+
+```
+FAIL BenchmarkXDRCopy/entry   allocs/op 26 > budget 23; B/op 1632 > budget 1250
+```
+
+The two commands above, run from the repository root, reproduce it locally —
+`checkbench` exits 1 exactly as CI does. Once you can see *which* benchmark
+regressed, find out *where* the allocations come from:
+
+```sh
+go test -run '^$' -bench BenchmarkXDRCopy -benchmem -count=1 -memprofile /tmp/mem.out .
+go tool pprof -alloc_objects -top /tmp/mem.out   # rank by number of allocations
+go tool pprof -alloc_space  -top /tmp/mem.out    # rank by bytes
+```
+
+The signing-path entries (`AuthorizeEntry`, `AuthorizeAll`) also include
+ed25519 signing and SHA-256; `BenchmarkXDRCopy` isolates the deep copy, so a
+regression that moves both almost always starts in `internal/xdrcopy`.
+
+The `BenchmarkXDRCopy` budgets are deliberately tighter than the ~40%
+policy: they sit **below** what a copy cost before the round-trip buffers
+were pooled (issue #108), so reverting that pooling fails this gate instead
+of only a local run. If they fail after a change that never touched
+`internal/xdrcopy`, profile with the commands above before moving the
+number, and if the new cost is justified, raise it in the same commit with
+the measurement in the body.
+
+## Verifying README snippets compile
+
+The README's two Go examples (Quickstart, Delegates) are not free-standing
+markdown text: each is extracted verbatim from a real, compiling source file
+in `internal/readmesnippets/`, between a `// snippet:start <name>` and
+`// snippet:end <name>` comment pair. `TestReadmeSnippetsMatchTheirSource` in
+`readme_test.go` at the repository root asserts the fenced code block in
+README.md is byte-identical (modulo tabs-vs-spaces) to that marked region.
+
+This means two different things can fail, and the test names which:
+
+- **The snippet source stops compiling.** It is an ordinary package with no
+  build tag, so `go build ./...` and `go vet ./...` — which CI already runs
+  on every push — catch this like any other compile error, naming the file
+  and line.
+- **The README drifts from its source**, for example a hand-edit to the
+  fenced block without updating `internal/readmesnippets/`, or the reverse.
+  `TestReadmeSnippetsMatchTheirSource` fails and prints both texts.
+
+To reproduce either failure locally:
+
+```sh
+go build ./...                        # catches a snippet that no longer compiles
+go test -run TestReadmeSnippets -v .  # catches README/source drift, naming the snippet
+```
+
+To change an example, edit the marked region in
+`internal/readmesnippets/*.go` and copy it verbatim (as, or converted from,
+tabs) into the matching fenced block in README.md. Never edit the fenced
+block alone: it is not the source of truth, and the drift test will fail on
+the next run.
+
+## GitHub Actions are pinned to commit SHAs
+
+Every `uses:` in `.github/workflows/*.yml` names a full commit SHA with the
+version in a trailing comment, e.g. `actions/checkout@3d3c42e… # v7`, never a
+mutable tag like `@v7`. A major-version tag can be retagged to point at a
+different commit; pinning to the SHA means a compromised or retagged action
+cannot silently start running with this repository's CI permissions.
+
+Dependabot (`.github/dependabot.yml`) watches the `github-actions` ecosystem
+and opens a PR updating both the SHA and its version comment together when a
+new release comes out, so the two can never drift apart. To pin a new action
+by hand, resolve the tag to a commit first:
+
+```sh
+git ls-remote --tags https://github.com/<owner>/<repo> | grep 'refs/tags/v7$'
+```
+
+Use the first column's SHA (for an *annotated* tag, `git ls-remote` also
+prints a `refs/tags/v7^{}` line — use that dereferenced commit SHA, not the
+tag object's own SHA).
 
 ## Golden vectors
 
@@ -106,6 +267,38 @@ at.
 
 See [e2e/README.md](e2e/README.md) for what each scenario proves and why the two
 rejection scenarios exist.
+
+## Scheduled e2e runs (CI)
+
+A GitHub Actions workflow (`.github/workflows/e2e.yml`) runs the e2e suite on a
+schedule (every 6 hours) and on `workflow_dispatch`. This catches testnet resets,
+protocol upgrades, and RPC changes that would otherwise break the suite silently
+between releases.
+
+- The workflow **does not** commit `e2e/RESULTS.md` automatically — that remains
+  a deliberate act from a verified local run.
+- On scheduled failure, the workflow opens a GitHub issue with the run details
+  so the regression is visible without digging through logs.
+- To reproduce a scheduled failure locally:
+  ```sh
+  export SOROAUTH_RPC_URL=https://soroban-testnet.stellar.org
+  go test -tags e2e -v ./e2e/...
+  ```
+
+## Coverage reporting (CI)
+
+The CI pipeline (`coverage` job in `.github/workflows/ci.yml`) measures test
+coverage on every push and PR, enforces a floor of **80%**, and publishes the
+report via Codecov.
+
+- Run locally to check your coverage before pushing:
+  ```sh
+  go test -coverprofile=coverage.out -covermode=atomic ./...
+  go tool cover -func=coverage.out | awk '/total/{print $3}'
+  ```
+- The floor is set to 80%. If it drops, the `coverage` job fails.
+- The report is visible in the CI logs and on Codecov without digging through
+  artifacts.
 
 ## Property-based tests
 
@@ -174,6 +367,14 @@ case remains covered even if the property test parameters change.
   deep-copies first and has a test proving the input's bytes are unchanged.
 - **Errors that name the sentinel.** Wrap with
   `fmt.Errorf("soroauth: <operation>: %w", err)` and match with `errors.Is`.
+- **Context is checked and passed down, never dropped.** Every exported
+  function that takes a `context.Context` as its first parameter must check
+  `ctx.Err()` before doing work — so a cancelled context fails closed even on
+  a path that never reaches a signer (a source-account entry, an empty
+  batch) — and must pass that same context, unchanged, to every call that can
+  block or produce a signature, in particular `Signer.Sign`. Every such
+  function has a cancellation test that asserts `context.Canceled` and that
+  the signer was not invoked; add one for any new context-taking function.
 - **Fail closed.** Where the protocol or the caller's intent is ambiguous,
   refuse and return an error rather than guess. Say which reading you chose in
   the commit message.

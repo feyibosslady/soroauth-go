@@ -37,17 +37,35 @@ type EntryInfo struct {
 }
 
 // countSubInvocations totals every invocation beneath these nodes, at any
-// depth. The root itself is not counted.
-func countSubInvocations(invocations []xdr.SorobanAuthorizedInvocation) int {
+// depth. The root itself is not counted. depth is the current level, with the
+// root's direct children at 1.
+//
+// The walk is bounded by MaxDecodeDepth: Inspect is pointed at entries from
+// elsewhere by design, and a caller may have decoded the entry with an SDK
+// default rather than DecodeAuthorizationEntry, so this recursion refuses a
+// pathological tree instead of following it.
+func countSubInvocations(invocations []xdr.SorobanAuthorizedInvocation, depth int) (int, error) {
+	if err := checkTraversalDepth(depth); err != nil {
+		return 0, err
+	}
 	total := 0
 	for i := range invocations {
-		total += 1 + countSubInvocations(invocations[i].SubInvocations)
+		nested, err := countSubInvocations(invocations[i].SubInvocations, depth+1)
+		if err != nil {
+			return 0, err
+		}
+		total += 1 + nested
 	}
-	return total
+	return total, nil
 }
 
-// inspectDelegates summarises one delegates level and recurses.
-func inspectDelegates(nodes []xdr.SorobanDelegateSignature) ([]NodeInfo, error) {
+// inspectDelegates summarises one delegates level and recurses. depth is the
+// current level, with the top-level delegates at 1, and is bounded the same way
+// countSubInvocations is.
+func inspectDelegates(nodes []xdr.SorobanDelegateSignature, depth int) ([]NodeInfo, error) {
+	if err := checkTraversalDepth(depth); err != nil {
+		return nil, err
+	}
 	if len(nodes) == 0 {
 		return nil, nil
 	}
@@ -57,7 +75,7 @@ func inspectDelegates(nodes []xdr.SorobanDelegateSignature) ([]NodeInfo, error) 
 		if err != nil {
 			return nil, err
 		}
-		nested, err := inspectDelegates(nodes[i].NestedDelegates)
+		nested, err := inspectDelegates(nodes[i].NestedDelegates, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -90,6 +108,12 @@ func inspectDelegates(nodes []xdr.SorobanDelegateSignature) ([]NodeInfo, error) 
 // Nonce and ValidUntilLedger are omitted from JSON when zero, per the field
 // tags in §5.8. A zero nonce is legal, so a caller that must distinguish it
 // should read the struct rather than the JSON.
+//
+// The delegate tree and the invocation tree are walked with MaxDecodeDepth as
+// the ceiling. Inspect is pointed at entries produced elsewhere, so an entry
+// nested beyond that ceiling is refused with ErrDecodeLimit rather than
+// followed. To decode such an entry from base64 with the same bound, use
+// DecodeAuthorizationEntry.
 func Inspect(entry xdr.SorobanAuthorizationEntry) (EntryInfo, error) {
 	var info EntryInfo
 
@@ -124,7 +148,7 @@ func Inspect(entry xdr.SorobanAuthorizationEntry) (EntryInfo, error) {
 		info.TopLevelSigned = isSigned(credentials.Signature)
 
 		if entry.Credentials.Type == xdr.SorobanCredentialsTypeSorobanCredentialsAddressWithDelegates {
-			delegates, err := inspectDelegates(entry.Credentials.AddressWithDelegates.Delegates)
+			delegates, err := inspectDelegates(entry.Credentials.AddressWithDelegates.Delegates, 1)
 			if err != nil {
 				return EntryInfo{}, fmt.Errorf("soroauth: inspect: %w", err)
 			}
@@ -148,7 +172,11 @@ func Inspect(entry xdr.SorobanAuthorizationEntry) (EntryInfo, error) {
 		info.RootFunction = string(contractFn.FunctionName)
 	}
 
-	info.SubInvocations = countSubInvocations(entry.RootInvocation.SubInvocations)
+	subInvocations, err := countSubInvocations(entry.RootInvocation.SubInvocations, 1)
+	if err != nil {
+		return EntryInfo{}, fmt.Errorf("soroauth: inspect: %w", err)
+	}
+	info.SubInvocations = subInvocations
 
 	return info, nil
 }
