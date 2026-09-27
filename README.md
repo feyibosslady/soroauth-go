@@ -771,7 +771,9 @@ Security reports go through [SECURITY.md](SECURITY.md), not the issue tracker.
 
 The Markdown in this repository is link-checked by the
 [`links` workflow](.github/workflows/links.yml): internal links gate a PR,
-external links are reported on the weekly scheduled run.
+external links are reported on the weekly scheduled run. It is also
+spell-checked by the [`spellcheck` workflow](.github/workflows/spellcheck.yml)
+on PRs touching docs, on push to main, and on a weekly schedule.
 
 ## License
 

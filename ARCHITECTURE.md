@@ -10,7 +10,9 @@ first for setup and the PR checklist. This file is the map.
 Every Markdown file here is link-checked by the
 [`links` workflow](.github/workflows/links.yml): internal links (between files
 in this repository) gate a PR, external links are reported on the weekly
-scheduled run and never block one.
+scheduled run and never block one. They are also spell-checked by the
+[`spellcheck` workflow](.github/workflows/spellcheck.yml) on PRs touching docs,
+on push to main, and on a weekly schedule.
 
 ## The problem
 
