@@ -1,7 +1,13 @@
 name: spellcheck
 
-# Spell-checks Markdown documentation. Runs on PRs that touch docs,
-# on push to main, on a weekly schedule, and on demand.
+# Spell-checks Markdown documentation. Runs on push to main, on a weekly
+# schedule, and on demand — not on pull requests.
+#
+# Pull requests are capped at the three checks the branch ruleset requires, and
+# a workflow that runs on pull_request adds a row for every job it declares.
+# links.yml, ci-go.yml, ci-parity.yml, ci-wasm.yml and ci-adapters.yml are all
+# shaped this way for the same reason. The cost is that a typo reaches main and
+# is caught on the push, one commit later rather than one review earlier.
 #
 # The project-specific dictionary is committed at .cspell-words.txt so
 # protocol terms (CAP-71-01, SOROBAN_CREDENTIALS_ADDRESS_V2, etc.) do not
@@ -10,12 +16,6 @@ name: spellcheck
 # inline.
 
 on:
-  pull_request:
-    paths:
-      - '**.md'
-      - '.cspell-words.txt'
-      - 'cspell.json'
-      - '.github/workflows/spellcheck.yml'
   push:
     branches: [main]
     paths:

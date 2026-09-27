@@ -770,10 +770,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Golden vectors are never edited by hand.
 Security reports go through [SECURITY.md](SECURITY.md), not the issue tracker.
 
 The Markdown in this repository is link-checked by the
-[`links` workflow](.github/workflows/links.yml): internal links gate a PR,
-external links are reported on the weekly scheduled run. It is also
-spell-checked by the [`spellcheck` workflow](.github/workflows/spellcheck.yml)
-on PRs touching docs, on push to main, and on a weekly schedule.
+[`links` workflow](.github/workflows/links.yml) and spell-checked by the
+[`spellcheck` workflow](.github/workflows/spellcheck.yml). Neither runs on pull
+requests, which carry only the three checks the branch ruleset requires: both
+run on push to `main`, on a weekly schedule, and on demand. A broken internal
+link or a typo is therefore caught one commit after it lands rather than one
+review before. External links are only reported, never failed, since a page
+moving elsewhere is not a regression here.
 
 ## License
 
