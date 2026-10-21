@@ -1,0 +1,410 @@
+.TH SOROAUTH 1 "" "soroauth 9375847-dirty" "User Commands"
+.SH NAME
+soroauth \- build, sign and inspect Soroban authorization entries
+.SH SYNOPSIS
+.B soroauth
+.I command
+.RI [ flags ]
+.SH DESCRIPTION
+.B soroauth
+builds, signs and inspects Soroban authorization entries: the values a
+Soroban contract's require_auth call needs when the authorizing address is
+not the transaction's source account.
+.PP
+Entries are passed and printed as base64 XDR, so the tool composes with
+anything that produces or consumes that: an RPC client, jq, or another
+invocation of soroauth.
+.PP
+Secrets are never accepted as flag values. The sign subcommand reads a seed
+from a named environment variable instead, which keeps it out of shell
+history, out of the process table, and out of any transcript of the session.
+No subcommand prints a secret, including on the error paths.
+.PP
+Run
+.B soroauth
+.I command
+.B \-h
+for a command's own flags. With --json, a command prints a single JSON
+object on stdout and, on failure, a JSON object with an "error" field.
+.SH COMMANDS
+.TP
+.B payload
+print the signing preimage and payload hash for an entry
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+authorization entry or transaction envelope, as base64 XDR
+.TP
+.B \-\-valid-until
+the last ledger at which the signature is valid
+.TP
+.B \-\-valid-for
+the signature lifetime in ledgers, resolved against the current ledger (needs --rpc-url)
+.TP
+.B \-\-rpc-url
+RPC endpoint used to resolve --valid-for (default $SOROAUTH_RPC_URL)
+.TP
+.B \-\-network
+testnet, futurenet, public, or a literal network passphrase
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B sign
+sign an entry with a seed read from an environment variable
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+authorization entry or transaction envelope, as base64 XDR
+.TP
+.B \-\-entries
+a file of entries to sign, one base64 entry per line, or - for stdin
+.TP
+.B \-\-valid-until
+the last ledger at which the signature is valid
+.TP
+.B \-\-valid-for
+the signature lifetime in ledgers, resolved against the current ledger (needs --rpc-url)
+.TP
+.B \-\-rpc-url
+RPC endpoint used to resolve --valid-for (default $SOROAUTH_RPC_URL)
+.TP
+.B \-\-network
+testnet, futurenet, public, or a literal network passphrase
+.TP
+.B \-\-secret-env
+name of the environment variable holding the seed
+.TP
+.B \-\-assertion
+path to a WebAuthn assertion JSON file, or - for stdin
+.TP
+.B \-\-signer-cmd
+path to an external signer executable speaking the remote protocol over stdin/stdout
+.TP
+.B \-\-signer-timeout
+timeout for the external signer executable
+.TP
+.B \-\-for
+credential node to sign, when it is not the signer's own address
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B simulate
+run the record pass and print what the host recorded
+.RS
+.TP
+.B \-\-entry
+the transaction envelope to simulate, as base64 XDR
+.TP
+.B \-\-rpc-url
+RPC endpoint to simulate against (default $SOROAUTH_RPC_URL)
+.TP
+.B \-\-use-upgraded-auth
+ask the host to record the address-bound V2 arm (best-effort)
+.TP
+.B \-\-timeout
+how long to wait for the simulation
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B submit
+enforce, sign, send and poll a transaction
+.RS
+.TP
+.B \-\-entry
+the signed transaction envelope, as base64 XDR
+.TP
+.B \-\-network
+testnet, futurenet, public, or a literal network passphrase
+.TP
+.B \-\-secret-env
+name of the environment variable holding the source account's seed
+.TP
+.B \-\-rpc-url
+RPC endpoint to submit to (default $SOROAUTH_RPC_URL)
+.TP
+.B \-\-allow-unsigned
+submit even though an address entry is unsigned (the host will refuse it)
+.TP
+.B \-\-timeout
+how long to wait for the enforcing pass, the send and the poll
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B delegates
+wrap an entry in a delegated-signer credential
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+the authorization entry, as base64 XDR
+.TP
+.B \-\-valid-until
+the last ledger at which the signatures are valid
+.TP
+.B \-\-valid-for
+the signature lifetime in ledgers, resolved against the current ledger (needs --rpc-url)
+.TP
+.B \-\-rpc-url
+RPC endpoint used to resolve --valid-for (default $SOROAUTH_RPC_URL)
+.TP
+.B \-\-delegate
+a delegate address; repeat for several
+.TP
+.B \-\-nested-json
+JSON string defining nested delegate tree
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B inspect
+print an entry's structure as JSON
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+the authorization entry or transaction envelope, as base64 XDR
+.TP
+.B \-\-entries
+a file of entries to inspect, one base64 entry per line, or - for stdin
+.TP
+.B \-\-json
+accepted for consistency; inspect's output is always JSON
+.RE
+.TP
+.B tree
+render an entry's delegate tree as ASCII, DOT, or JSON
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+the authorization entry or transaction envelope, as base64 XDR
+.TP
+.B \-\-format
+tree rendering: ascii or dot
+.TP
+.B \-\-json
+output structured JSON instead of a rendering
+.RE
+.TP
+.B tui
+interactive TUI for inspecting and signing an entry
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+base64-encoded authorization entry (required)
+.TP
+.B \-\-valid-until
+signature expiration ledger (required)
+.TP
+.B \-\-network
+testnet, futurenet, public, or a literal passphrase (required)
+.TP
+.B \-\-secret-env
+name of environment variable holding the secret seed (required)
+.TP
+.B \-\-for
+target address to sign for (optional)
+.RE
+.TP
+.B doctor
+check the local environment for common first-run problems
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-network
+testnet, futurenet, public, or a literal network passphrase
+.TP
+.B \-\-rpc-url
+URL to check network reachability against
+.TP
+.B \-\-secret-env
+name of an environment variable holding the signing seed; checked for presence and key control
+.TP
+.B \-\-address
+account the signer is meant to sign for
+.TP
+.B \-\-format
+output format: text or json
+.TP
+.B \-\-timeout
+timeout for the network check
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B cross-compile
+build soroauth for multiple targets
+.RS
+.TP
+.B \-\-json
+emit results as JSON (one object per line)
+.TP
+.B \-\-targets
+comma-separated GOOS/GOARCH pairs (default: all)
+.TP
+.B \-\-output-dir
+directory to write binaries (default: stdout only)
+.RE
+.TP
+.B verify
+check an entry's signatures without submitting it
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-entry
+the authorization entry or transaction envelope, as base64 XDR
+.TP
+.B \-\-entries
+a file of entries to verify, one base64 entry per line, or - for stdin
+.TP
+.B \-\-network
+testnet, futurenet, public, or a literal network passphrase
+.TP
+.B \-\-valid-until
+assert the expiration the entry carries (optional)
+.TP
+.B \-\-allow-unsigned
+accept unsigned nodes (a Void top-level node of a delegates entry is legitimate under CAP-71-01)
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B diff
+compare two entries and report what changed
+.RS
+.TP
+.B \-\-config
+path to CLI configuration file
+.TP
+.B \-\-before
+the first authorization entry, as base64 XDR
+.TP
+.B \-\-after
+the second authorization entry, as base64 XDR
+.TP
+.B \-\-before-entries
+a file of entries to compare, one base64 entry per line, or - for stdin; paired with --after-entries
+.TP
+.B \-\-after-entries
+a file of entries to compare, one base64 entry per line, or - for stdin; paired with --before-entries
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B completions
+emit a shell completion script
+.RS
+.TP
+.B \-\-shell
+which shell: bash, zsh, or fish
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B man
+emit a roff man page
+.RS
+.TP
+.B \-\-out
+write the page to this path instead of stdout
+.TP
+.B \-\-json
+output as JSON
+.RE
+.TP
+.B wasm-budget
+measure the wasm core against a size ceiling
+.RS
+.TP
+.B \-\-out
+path to the wasm artifact to measure
+.TP
+.B \-\-budget
+maximum allowed size in bytes
+.TP
+.B \-\-prev-size
+previous release's size, for a delta
+.TP
+.B \-\-build-cmd
+command to build the artifact before measuring
+.TP
+.B \-\-json
+output the result as JSON
+.RE
+.SH GLOBAL FLAGS
+.TP
+.B \-\-version
+print the build version, commit and Go toolchain version, then exit
+.TP
+.B \-h, \-\-help
+print the usage text
+.SH EXIT CODES
+.TP
+.B 0
+success
+.TP
+.B 1
+general error (internal or unclassified)
+.TP
+.B 2
+usage error (invalid flags, missing required flags, malformed input)
+.TP
+.B 3
+signing refused (no matching node, already signed, unsupported credentials)
+.TP
+.B 4
+verification failed (signature mismatch, invalid expiration)
+.SH ENVIRONMENT
+Configuration values are resolved in precedence order: command-line flag, then
+environment variable, then configuration file, then built-in default.
+.TP
+.B SOROAUTH_CONFIG
+path to the JSON configuration file (defaults to $XDG_CONFIG_HOME/soroauth/config.json or $HOME/.config/soroauth/config.json)
+.TP
+.B SOROAUTH_NETWORK
+default network name or passphrase for \-\-network
+.TP
+.B SOROAUTH_RPC_URL
+default RPC endpoint for \-\-rpc-url, used by \-\-valid-for and doctor
+.TP
+.B SOROAUTH_SECRET_ENV
+default environment variable name for \-\-secret-env (holds a variable name, never a secret value)
+.TP
+.B SOROAUTH_FORMAT
+default output format (text, json, ascii, or dot)
+.SH SEE ALSO
+The project README and the guides under docs/ in the source repository.
+.SH LICENSE
+Apache License 2.0. This software is unaudited; see SECURITY.md.
