@@ -87,11 +87,12 @@ commands:
   completions    emit a shell completion script (bash, zsh, fish)
   man            emit a roff man page
   wasm-budget    measure the wasm core against a size ceiling
+  explain-error  explain what a host/RPC error means for an authorization entry
 
 run "soroauth <command> -h" for the flags of a command.
 
 flags:
-  --version      print the build version, commit and Go version
+  --version      print the build version, commit and Go toolchain version
   -h, --help     print this help
 
 exit codes:
@@ -189,8 +190,11 @@ var cliSubcommands = map[string]cliSubcommand{
 	"man": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
 		return runMan(args, stdout, stderr)
 	},
-	"wasm-budget": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
+"wasm-budget": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
 		return runWASMBudget(args, stdout, stderr)
+	},
+	"explain-error": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
+		return runExplainError(args, stdout, stderr)
 	},
 }
 

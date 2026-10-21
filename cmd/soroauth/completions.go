@@ -156,6 +156,23 @@ var commandSpecs = []commandSpec{
 		},
 	},
 	{
+		Name:        "explain-error",
+		Description: "explain what a host/RPC error means for an authorization entry",
+		Flags: []flagSpec{
+			{Name: "entry", Description: "authorization entry or transaction envelope, as base64 XDR", TakesValue: true},
+			{Name: "network", Description: "testnet, futurenet, public, or a literal network passphrase", TakesValue: true, Values: namedNetworks},
+			{Name: "json", Description: "output as JSON", TakesValue: false},
+		},
+	},
+	{
+		Name:        "explain-error",
+		Description: "explain what a host/RPC error means for an authorization entry",
+		Flags: []flagSpec{
+			{Name: "entry", Description: "authorization entry or transaction envelope, as base64 XDR", TakesValue: true},
+			{Name: "network", Description: "testnet, futurenet, public, or a literal network passphrase", TakesValue: true, Values: namedNetworks},
+		},
+	},
+	{
 		Name:        "inspect",
 		Description: "print an entry's structure as JSON",
 		Flags: []flagSpec{
