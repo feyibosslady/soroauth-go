@@ -522,6 +522,13 @@ There are two generators, because there are two things being proven:
   so there is no CAP to cite and the evidence is a real wallet library's output
   instead.
 
+If you discover a vector discrepancy (e.g. the Go output does not match the JS
+SDK), **do not edit the vector by hand**. Instead, open a new issue using the
+"Vector discrepancy report" template at `.github/ISSUE_TEMPLATE/vector-discrepancy.md`.
+This template collects both encodings, both implementation versions, the vector
+name, and the command that produced the disagreement. Prominently states that
+no vector may be edited by hand. Route to maintainers at the appropriate severity.
+
 To change them, change the generator:
 
 ```sh
