@@ -37,6 +37,10 @@ credential arms: legacy `SOROBAN_CREDENTIALS_ADDRESS`, CAP-71
 - [Browser and WebAssembly](#browser-and-webassembly)
 - [Proven on testnet](#proven-on-testnet)
 - [FAQ](#faq)
+- [Compatibility and deprecation](docs/compatibility.md)
+- [Adding a signer](docs/adding-a-signer.md)
+- [Verification service runbook](docs/verification-service-runbook.md)
+- [soroauth vs soroauth-explain](docs/soroauth-vs-explain.md)
 - [Status](#status)
 - [What soroauth deliberately does not do](#what-soroauth-deliberately-does-not-do)
 - [Contributing](#contributing)
@@ -54,7 +58,7 @@ The CLI:
 go install github.com/soroauth/soroauth-go/cmd/soroauth@latest
 ```
 
-Requires Go 1.26.0 or later, and `github.com/stellar/go-stellar-sdk` v0.7.3 or
+Requires Go 1.26.3 or later, and `github.com/stellar/go-stellar-sdk` v0.7.3 or
 later. As checked on 2026-10-17, the root module pins v0.7.3; which newer SDK
 versions that promise covers, and how the pin moves, is stated in
 [docs/sdk-support.md](docs/sdk-support.md).

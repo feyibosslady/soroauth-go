@@ -22,20 +22,24 @@ navigation.
 
 ## Guides
 
-| Document                                        | Answers                                                                                                            |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| [labels](labels.md)                             | What each complexity and area label means, who applies it, and who has the final say on complexity.                |
-| [signers](signers.md)                           | Which signer to use for a given threat model, and what evidence backs each one.                                    |
-| [signing-flow](signing-flow.md)                 | The record, sign, enforce, assemble and submit sequence, with the responsible function at each step.               |
-| [passkeys](passkeys.md)                         | How to sign for a WebAuthn / passkey smart wallet, end to end.                                                     |
-| [migrating](migrating.md)                       | How to replace hand-rolled auth-entry signing with soroauth and verify it produced identical bytes.                |
-| [multi-party-signing](multi-party-signing.md)   | How three parties sign one delegate tree in sequence, and why the expiration cannot change once anyone has signed. |
-| [verification-limits](verification-limits.md)   | What `soroauth verify` can and cannot establish offline.                                                           |
-| [verification-service](verification-service.md) | How to run the HTTP verification service, and what it will and will not do.                                        |
-| [sdk-support](sdk-support.md)                   | Which `go-stellar-sdk` versions are supported and how the pin moves.                                               |
-| [browser](browser.md)                           | How to use soroauth from a browser page: installing and loading the wasm module, and the passkey flow.             |
-| [fixture-quickstart](fixture-quickstart.md)     | How to run the e2e fixture contracts against a local Stellar quickstart container.                                 |
-| [reproducibility](reproducibility.md)           | How to reproduce the released CLI binaries byte-for-byte from a tagged source checkout.                            |
+| Document                                                        | Answers                                                                                                            |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| [labels](labels.md)                                             | What each complexity and area label means, who applies it, and who has the final say on complexity.                |
+| [signers](signers.md)                                           | Which signer to use for a given threat model, and what evidence backs each one.                                    |
+| [adding-a-signer](adding-a-signer.md)                           | How to add a signer adapter, run the conformance suite, and document its custody model.                            |
+| [signing-flow](signing-flow.md)                                 | The record, sign, enforce, assemble and submit sequence, with the responsible function at each step.               |
+| [passkeys](passkeys.md)                                         | How to sign for a WebAuthn / passkey smart wallet, end to end.                                                     |
+| [migrating](migrating.md)                                       | How to replace hand-rolled auth-entry signing with soroauth and verify it produced identical bytes.                |
+| [soroauth-vs-explain](soroauth-vs-explain.md)                   | Where soroauth-go ends, where soroauth-explain begins, and how one entry flows through both.                       |
+| [multi-party-signing](multi-party-signing.md)                   | How three parties sign one delegate tree in sequence, and why the expiration cannot change once anyone has signed. |
+| [verification-limits](verification-limits.md)                   | What `soroauth verify` can and cannot establish offline.                                                           |
+| [verification-service](verification-service.md)                 | How to run the HTTP verification service, and what it will and will not do.                                        |
+| [verification-service-runbook](verification-service-runbook.md) | How to configure, monitor, drain, and troubleshoot the verification service.                                       |
+| [sdk-support](sdk-support.md)                                   | Which `go-stellar-sdk` versions are supported and how the pin moves.                                               |
+| [compatibility](compatibility.md)                               | Which Go, CLI, JSON, vector, wire, and SDK surfaces are compatibility promises.                                    |
+| [browser](browser.md)                                           | How to use soroauth from a browser page: installing and loading the wasm module, and the passkey flow.             |
+| [fixture-quickstart](fixture-quickstart.md)                     | How to run the e2e fixture contracts against a local Stellar quickstart container.                                 |
+| [reproducibility](reproducibility.md)                           | How to reproduce the released CLI binaries byte-for-byte from a tagged source checkout.                            |
 
 ## Reference
 
@@ -73,19 +77,22 @@ navigation.
 
 These live next to the code they describe.
 
-| Document                                                            | Answers                                                                       |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| [wasm](../wasm/README.md)                                           | What the js/wasm signing core exposes and how it is built.                    |
-| [wasm/ts](../wasm/ts/README.md)                                     | How to use the `@soroauth/wasm` TypeScript wrapper.                           |
-| [bindings/jvm](../bindings/jvm/README.md)                           | How to call soroauth from Java 22+ via Panama FFM.                            |
-| [bindings/rust](../bindings/rust/README.md)                         | How to use the Rust `soroauth` crate.                                         |
-| [examples](../examples/README.md)                                   | Overview of the runnable example programs in this repository.                 |
-| [examples/browser-passkey](../examples/browser-passkey/README.md)   | How to run the browser demo that signs with a passkey and submits to testnet. |
-| [examples/remote-signer](../examples/remote-signer/README.md)       | How to run the reference HTTP signing server and its client together.         |
-| [examples/wallet-freighter](../examples/wallet-freighter/README.md) | How to inspect and verify an entry before signing with Freighter.             |
-| [integrations/action](../integrations/action/README.md)             | How to verify Soroban authorization entries in GitHub Actions workflows.      |
-| [integrations/grpc](../integrations/grpc/README.md)                 | How to run and call the gRPC verification service.                            |
-| [server/openapi](../server/openapi/README.md)                       | The OpenAPI 3.0 specification and conformance check for `soroauth-server`.    |
+| Document                                                            | Answers                                                                                      |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [wasm](../wasm/README.md)                                           | What the js/wasm signing core exposes and how it is built.                                   |
+| [wasm/ts](../wasm/ts/README.md)                                     | How to use the `@soroauth/wasm` TypeScript wrapper.                                          |
+| [bindings/jvm](../bindings/jvm/README.md)                           | How to call soroauth from Java 22+ via Panama FFM.                                           |
+| [bindings/rust](../bindings/rust/README.md)                         | How to use the Rust `soroauth` crate.                                                        |
+| [examples](../examples/README.md)                                   | Overview of the runnable example programs in this repository.                                |
+| [examples/browser-passkey](../examples/browser-passkey/README.md)   | How to run the browser demo that signs with a passkey and submits to testnet.                |
+| [examples/remote-signer](../examples/remote-signer/README.md)       | How to run the reference HTTP signing server and its client together.                        |
+| [examples/wallet-freighter](../examples/wallet-freighter/README.md) | How to inspect and verify an entry before signing with Freighter.                            |
+| [integrations/action](../integrations/action/README.md)             | How to verify Soroban authorization entries in GitHub Actions workflows.                     |
+| [integrations/grpc](../integrations/grpc/README.md)                 | How to run and call the gRPC verification service.                                           |
+| [server/openapi](../server/openapi/README.md)                       | The OpenAPI 3.0 specification and conformance check for `soroauth-server`.                   |
+| [WAVE9_ARCHIVE](WAVE9_ARCHIVE.md)                                   | Archive of the Wave 9 issue backlog, recording which items shipped and which did not.        |
+| [performance-characteristics](performance-characteristics.md)       | Measured costs of main operations, per-operation/per-arm budgets, and delegate tree scaling. |
+| [threat-model](threat-model.md)                                     | Trust boundaries: caller, signer, RPC endpoint, entry source, network.                       |
 
 ## Repository meta
 
