@@ -39,9 +39,14 @@ func batchFile(t *testing.T, lines ...string) string {
 
 // batchElement is one element of a batch JSON report.
 type batchElement struct {
-	Entry  int             `json:"entry"`
-	Result json.RawMessage `json:"result"`
-	Error  string          `json:"error"`
+	Entry         int             `json:"entry"`
+	Result        json.RawMessage `json:"result"`
+	Error         string          `json:"error"`
+	SchemaVersion int             `json:"schema_version"`
+	Code          string          `json:"code"`
+	Message       string          `json:"message"`
+	Field         string          `json:"field"`
+	ExitCode      int             `json:"exit_code"`
 }
 
 func decodeBatchReport(t *testing.T, stdout string) []batchElement {
@@ -281,10 +286,17 @@ func TestVerifyBatchReportsPerEntryVerdicts(t *testing.T) {
 	if !strings.Contains(stdout, "entry 1:") || !strings.Contains(stdout, "entry 2:") {
 		t.Errorf("stdout does not label both inputs:\n%s", stdout)
 	}
-	if got := strings.Count(stdout, "result: verified"); got != 1 {
-		t.Errorf("the report carries %d verified verdicts, want 1:\n%s", got, stdout)
+	// Count "VERIFIED:" at start of line for verified entries, not "NOT VERIFIED:".
+	verifiedCount := 0
+	for _, line := range strings.Split(stdout, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "VERIFIED:") {
+			verifiedCount++
+		}
 	}
-	if !strings.Contains(stdout, "result: NOT verified") {
+	if verifiedCount != 1 {
+		t.Errorf("the report carries %d verified verdicts, want 1:\n%s", verifiedCount, stdout)
+	}
+	if !strings.Contains(stdout, "NOT VERIFIED") {
 		t.Errorf("the unsigned entry's verdict is missing:\n%s", stdout)
 	}
 	if !strings.Contains(err.Error(), "1 of 2 entries failed") {
@@ -335,8 +347,9 @@ func TestVerifyBatchValidUntilIsAnAssertionPerEntry(t *testing.T) {
 		t.Errorf("exit code = %d, want %d", code, ExitVerificationFailed)
 	}
 	got := decodeBatchReport(t, stdout)
-	if len(got) != 1 || !strings.Contains(got[0].Error, "carries expiration") {
-		t.Errorf("report = %+v, want entry 1 to report the expiration disagreement", got)
+	if len(got) != 1 || got[0].Code != "verification_failed" ||
+		got[0].Field != "--valid-until" || got[0].ExitCode != ExitVerificationFailed {
+		t.Errorf("report = %+v, want a structured expiration disagreement", got)
 	}
 }
 
@@ -474,13 +487,20 @@ func TestSignBatchIsAllOrNothing(t *testing.T) {
 			t.Errorf("stderr is not empty in JSON mode: %q", stderr)
 		}
 		var out struct {
-			Error string `json:"error"`
+			Error         string `json:"error"`
+			SchemaVersion int    `json:"schema_version"`
+			Code          string `json:"code"`
+			Message       string `json:"message"`
+			Field         string `json:"field"`
+			ExitCode      int    `json:"exit_code"`
 		}
 		if jsonErr := json.Unmarshal([]byte(stdout), &out); jsonErr != nil {
 			t.Fatalf("a failed batch must be a single JSON error object: %v\n%s", jsonErr, stdout)
 		}
-		if !strings.Contains(out.Error, "no signed output was written") {
-			t.Errorf("error object = %q, want the all-or-nothing reason", out.Error)
+		if out.SchemaVersion != jsonErrorSchemaVersion || out.Code != "usage_error" ||
+			out.Message == "" || out.Field != "--entries" || out.ExitCode != ExitUsageError ||
+			out.Error != out.Message {
+			t.Errorf("error object does not satisfy the versioned schema: %+v", out)
 		}
 	})
 }
@@ -564,7 +584,8 @@ func TestDiffBatchNamesTheSideThatFailed(t *testing.T) {
 		t.Fatal("diff accepted a malformed before side")
 	}
 	got := decodeBatchReport(t, stdout)
-	if len(got) != 1 || !strings.Contains(got[0].Error, "--before-entries") {
+	if len(got) != 1 || got[0].Field != "--before-entries" ||
+		got[0].SchemaVersion != jsonErrorSchemaVersion || got[0].Code != "usage_error" {
 		t.Errorf("report = %+v, want the error to name the side that failed", got)
 	}
 }
