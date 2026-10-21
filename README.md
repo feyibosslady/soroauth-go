@@ -270,6 +270,30 @@ something a script drives, so it has no `--json` mode.
 | `man`           | `format`, `page`                                                                                                                            | `error`                                             |
 | `wasm-budget`   | `size`, `budget`, `exceeded`, and optional `previous_size` and `delta`                                                                      | `error`                                             |
 
+### Output levels — `--quiet` and `--verbose`
+
+Every subcommand accepts `--quiet` and `--verbose`; the two are mutually
+exclusive. `--quiet` keeps a successful run silent while preserving its exit
+code, which is what a script wants:
+
+```sh
+soroauth verify --entry "$ENTRY" --network testnet --quiet
+```
+
+A failure still returns the command's normal exit code. `--verbose` adds the
+reasoning behind a verdict on stderr, naming the rule or credential node it
+applied. For example, `inspect --verbose` reports the credential arm and
+delegate count, and `verify --verbose` reports one verdict per node:
+
+```sh
+soroauth verify --entry "$ENTRY" --network testnet --verbose
+# soroauth: verify: entry: node G...: verified
+# soroauth: verify: ok
+```
+
+Neither flag changes `--json` output, and neither ever echoes an entry or a
+secret. Help, completions and the man page list both flags.
+
 ### Worked invocation — JSON output
 
 ```sh
