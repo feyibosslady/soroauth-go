@@ -967,3 +967,111 @@ func TestCrossCompileNoTargets(t *testing.T) {
 		t.Error("JSON error object has empty error field")
 	}
 }
+
+// TestExplainError tests the explain-error subcommand with various credential types.
+func TestExplainError(t *testing.T) {
+	tests := []struct {
+		name      string
+		vector    string
+		wantError bool
+	}{
+		{
+			name:      "v2_single_testnet",
+			vector:    "v2_single_testnet",
+			wantError: false,
+		},
+		{
+			name:      "legacy_single_testnet",
+			vector:    "legacy_single_testnet",
+			wantError: false,
+		},
+		{
+			name:      "source_account_testnet",
+			vector:    "source_account_testnet",
+			wantError: false,
+		},
+		{
+			name:      "v2_sub_invocations",
+			vector:    "v2_sub_invocations",
+			wantError: false,
+		},
+		{
+			name:      "delegates_unsorted_with_nested",
+			vector:    "delegates_unsorted_with_nested",
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := loadVector(t, tt.vector)
+			_, stderr, err := runCLI(t, "explain-error", "--entry", v.UnsignedEntryXDR)
+			if err != nil && !tt.wantError {
+				t.Fatalf("explain-error failed: %v\nstderr: %q", err, stderr)
+			}
+			if !tt.wantError {
+				out, _, _ := runCLI(t, "explain-error", "--entry", v.UnsignedEntryXDR)
+				if out == "" {
+					t.Error("expected non-empty stdout from explain-error")
+				} else {
+					// Verify the output contains expected content
+					if !strings.Contains(out, "Credential type:") {
+						t.Errorf("stdout should contain 'Credential type:', got: %q", out)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestExplainErrorJSON tests the explain-error --json flag.
+func TestExplainErrorJSON(t *testing.T) {
+	t.Run("v2_single_testnet", func(t *testing.T) {
+		v := loadVector(t, "v2_single_testnet")
+		stdout, _, err := runCLI(t, "explain-error", "--entry", v.UnsignedEntryXDR, "--json")
+		if err != nil {
+			t.Fatalf("explain-error --json failed: %v", err)
+		}
+		var result struct {
+			Entry      string `json:"entry,omitempty"`
+			PlainText  string `json:"plain_text"`
+			JSON       string `json:"json,omitempty"`
+			Error      string `json:"error,omitempty"`
+			ErrorExit  int    `json:"-"`
+		}
+		if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+			t.Fatalf("stdout is not valid JSON: %v\nstdout: %q", err, stdout)
+		}
+		if result.Entry == "" {
+			t.Error("expected entry in JSON output")
+		}
+		if result.PlainText == "" {
+			t.Error("expected plain text in JSON output")
+		}
+	})
+}
+
+// TestExplainErrorMissingEntry tests that --entry is required.
+func TestExplainErrorMissingEntry(t *testing.T) {
+	_, _, err := runCLI(t, "explain-error")
+	if err == nil {
+		t.Fatal("expected error when no --entry given")
+	}
+	if ExitCode(err) != ExitUsageError {
+		t.Errorf("exit code %d, want %d", ExitCode(err), ExitUsageError)
+	}
+	if !strings.Contains(err.Error(), "--entry is required") {
+		t.Errorf("error should mention '--entry is required', got: %q", err.Error())
+	}
+}
+
+// TestExplainErrorUnknownCommand tests that unknown commands are rejected.
+func TestExplainErrorUnknownCommand(t *testing.T) {
+	_, _, err := runCLI(t, "explain-error", "frobnicate")
+	if err == nil {
+		t.Fatal("expected error for unknown subcommand after explain-error")
+	}
+	if ExitCode(err) != ExitUsageError {
+		t.Errorf("exit code %d, want %d", ExitCode(err), ExitUsageError)
+	}
+}
