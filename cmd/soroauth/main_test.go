@@ -1034,11 +1034,11 @@ func TestExplainErrorJSON(t *testing.T) {
 			t.Fatalf("explain-error --json failed: %v", err)
 		}
 		var result struct {
-			Entry      string `json:"entry,omitempty"`
-			PlainText  string `json:"plain_text"`
-			JSON       string `json:"json,omitempty"`
-			Error      string `json:"error,omitempty"`
-			ErrorExit  int    `json:"-"`
+			Entry     string `json:"entry,omitempty"`
+			PlainText string `json:"plain_text"`
+			JSON      string `json:"json,omitempty"`
+			Error     string `json:"error,omitempty"`
+			ErrorExit int    `json:"-"`
 		}
 		if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 			t.Fatalf("stdout is not valid JSON: %v\nstdout: %q", err, stdout)

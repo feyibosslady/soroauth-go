@@ -211,7 +211,7 @@ var cliSubcommands = map[string]cliSubcommand{
 	"man": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
 		return runMan(args, stdout, stderr)
 	},
-"wasm-budget": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
+	"wasm-budget": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
 		return runWASMBudget(args, stdout, stderr)
 	},
 	"explain-error": func(args []string, stdout, stderr io.Writer, _ func(string) string, _ io.Reader) error {
