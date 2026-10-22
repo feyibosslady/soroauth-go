@@ -1342,6 +1342,11 @@ reports the structure; it does not replace the rest of the Stellar toolchain.
 | delegates     | --json              | —       | output as JSON                                                                                        |
 | delegates     | --quiet             | —       | print nothing on success; the exit code is the result                                                 |
 | delegates     | --verbose           | —       | explain the verdict on stderr without printing the entry or a secret                                  |
+| explain-error | --entry             | <value> | authorization entry or transaction envelope, as base64 XDR                                            |
+| explain-error | --network           | <value> | testnet, futurenet, public, or a literal network passphrase                                           |
+| explain-error | --json              | —       | output as JSON                                                                                        |
+| explain-error | --quiet             | —       | print nothing on success; the exit code is the result                                                 |
+| explain-error | --verbose           | —       | explain the verdict on stderr without printing the entry or a secret                                  |
 | inspect       | --config            | <value> | path to CLI configuration file                                                                        |
 | inspect       | --entry             | <value> | the authorization entry or transaction envelope, as base64 XDR                                        |
 | inspect       | --entries           | <value> | a file of entries to inspect, one base64 entry per line, or - for stdin                               |

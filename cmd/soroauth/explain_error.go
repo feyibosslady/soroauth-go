@@ -180,36 +180,29 @@ func runExplainError(args []string, stdout, stderr io.Writer) error {
 	fs.StringVar(&entryB64, "entry", "", "base64-encoded Soroban authorization entry (required)")
 	fs.StringVar(&network, "network", "", "network passphrase: testnet, futurenet, public, rpc, or literal (optional)")
 	fs.BoolVar(&jsonOutput, "json", false, "output the result as JSON")
+	registerVerbosityFlags(fs)
 
 	if err := fs.Parse(args); err != nil {
-		return newErrorf(ExitUsageError, "%w", err)
+		return writeJSONError(stdout, jsonOutput, newErrorf(ExitUsageError, "%w", err))
 	}
 
 	if entryB64 == "" {
-		return newErrorf(ExitUsageError, "--entry is required")
+		return writeJSONError(stdout, jsonOutput, withField("--entry", newErrorf(ExitUsageError, "--entry is required")))
 	}
 
 	// Decode the entry
 	entry, err := decodeEntry(entryB64)
 	if err != nil {
-		return newErrorf(ExitUsageError, "decoding --entry: %w", err)
+		return writeJSONError(stdout, jsonOutput, withField("--entry", newErrorf(ExitUsageError, "decoding --entry: %w", err)))
 	}
 
 	// Inspect the entry to get credential type
 	entryInfo, inspectErr := soroauth.Inspect(entry)
 	if inspectErr != nil {
-		// Fall back to basic checks
-		result := explainErrorResult{
-			Entry:     entryB64,
-			Error:     inspectErr.Error(),
-			ErrorExit: 1,
-		}
 		if jsonOutput {
-			b, _ := json.Marshal(result)
-			fmt.Fprintln(stdout, string(b))
-		} else {
-			fmt.Fprintln(stderr, inspectErr.Error())
+			return writeJSONError(stdout, true, withField("--entry", newErrorf(ExitGeneralError, "inspecting --entry: %w", inspectErr)))
 		}
+		fmt.Fprintln(stderr, inspectErr.Error())
 		return nil
 	}
 
@@ -292,7 +285,7 @@ func runExplainError(args []string, stdout, stderr io.Writer) error {
 	if jsonOutput {
 		b, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			return fmt.Errorf("encoding result as JSON: %w", err)
+			return writeJSONError(stdout, true, newErrorf(ExitGeneralError, "encoding result as JSON: %w", err))
 		}
 		fmt.Fprintln(stdout, string(b))
 	} else {

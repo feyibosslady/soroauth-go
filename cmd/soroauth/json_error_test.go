@@ -73,6 +73,7 @@ func TestEveryJSONSubcommandUsesVersionedErrorSchema(t *testing.T) {
 		"simulate":      {"--json"},
 		"submit":        {"--json"},
 		"delegates":     {"--json"},
+		"explain-error": {"--entry", "not-base64", "--json"},
 		"inspect":       {"--entry", "not-base64", "--json"},
 		"tree":          {"--entry", "not-base64", "--json"},
 		"doctor":        {"--rpc-url", "http://127.0.0.1:0", "--json"},

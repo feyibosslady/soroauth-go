@@ -193,16 +193,17 @@ jobs:
         run: cargo build --release --target wasm32v1-none --workspace --locked
   # Fourth of the pull-request checks: CHANGELOG consistency.
   #
-  # Lists feat and fix commits since the last release tag that have no
-  # corresponding CHANGELOG entry. Commits are expected to reference an issue
-  # number (e.g. #123) that also appears in the CHANGELOG Unreleased section.
-  # Commits without an issue number are flagged as needing manual CHANGELOG
-  # review (fail-closed). Chore, CI, test and docs commits are excluded.
+  # Checks feat and fix commits introduced by this PR or push against issue
+  # references in the CHANGELOG Unreleased section. For a PR, the PR title/body
+  # can provide the issue reference when individual commits do not. Chore, CI,
+  # test and docs commits are excluded.
   changelog:
     name: CHANGELOG consistency
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod

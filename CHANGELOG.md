@@ -8,6 +8,11 @@ this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Add the `explain-error` CLI subcommand and vector-discrepancy issue template
+  reference. (#400, #401, #402, #403)
+
 ### Changed
 
 - **The minimum Go version is now 1.26.3** (was 1.25.0). `go.mod`, every

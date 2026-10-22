@@ -63,6 +63,10 @@ func TestEveryCLICommandHasJSONSuccessAndFailure(t *testing.T) {
 			success: []string{"--entry", delegatesVector.PreWrapEntryXDR, "--valid-until", "1234567", "--delegate", delegate},
 			failure: []string{"--entry", vector.UnsignedEntryXDR, "--valid-until", "1234567", "--delegate", delegate, "--delegate", delegate},
 		},
+		"explain-error": {
+			success: []string{"--entry", vector.UnsignedEntryXDR, "--network", "testnet"},
+			failure: []string{"--entry", "not-base64", "--network", "testnet"},
+		},
 		"inspect": {
 			success: []string{"--entry", vector.UnsignedEntryXDR},
 			failure: []string{"--entry", "not-base64"},
